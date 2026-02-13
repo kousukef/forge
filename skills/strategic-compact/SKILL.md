@@ -1,6 +1,7 @@
 ---
 name: strategic-compact
 description: "Use when context window exceeds 80%, switching between major tasks, transitioning development phases, or after processing large outputs. Provides strategic compaction timing to prevent losing critical context."
+disable-model-invocation: true
 ---
 
 # 戦略的コンパクションスキル

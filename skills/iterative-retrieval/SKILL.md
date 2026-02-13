@@ -1,6 +1,7 @@
 ---
 name: iterative-retrieval
 description: "Use when starting work as a subagent, exploring unfamiliar code, or gathering codebase information. Provides Glob-Grep-Read incremental context-fetching strategy. MUST be invoked by all subagents before diving into work."
+disable-model-invocation: true
 ---
 
 # 段階的コンテキスト取得スキル

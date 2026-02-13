@@ -1,6 +1,7 @@
 ---
 name: systematic-debugging
 description: "Use when encountering bugs, test failures, build errors, or unexpected behavior. Provides 4-phase process: Reproduce, Root-cause, Fix, Defend. MUST be invoked instead of making random code changes when something fails."
+disable-model-invocation: true
 ---
 
 # 体系的デバッグスキル

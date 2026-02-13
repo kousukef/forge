@@ -1,6 +1,7 @@
 ---
 name: test-driven-development
 description: "Use when writing new code, fixing bugs, or refactoring during implementation. Enforces strict RED-GREEN-REFACTOR TDD cycle. MUST be invoked before writing any production code. Applies universally across all technology domains."
+disable-model-invocation: true
 ---
 
 # TDD（テスト駆動開発）スキル
@@ -13,7 +14,7 @@ description: "Use when writing new code, fixing bugs, or refactoring during impl
 ## サイクル
 
 1. **RED**: 失敗するテストを書く
-   - テストが失敗することを確認（`pnpm vitest run [テストファイル]`）
+   - テストが失敗することを確認（`npx vitest run [テストファイル]`）
    - テストが正しい理由で失敗していることを確認
 
 2. **GREEN**: テストを通す最小限のコードを書く
