@@ -2,6 +2,7 @@
 name: build-error-resolver
 description: "TypeScriptのビルドエラーを最小限の差分で解決する"
 tools: [Read, Write, Edit, Bash, Grep]
+permissionMode: bypassPermissions
 skills: [systematic-debugging, iterative-retrieval]
 ---
 
@@ -51,6 +52,6 @@ TypeScriptのビルドエラーを最小限の変更で解決する。
 
 ## 完了条件
 
-- `pnpm build` が成功すること
-- `pnpm tsc --noEmit` が成功すること
+- `npm run build` が成功すること
+- `npx tsc --noEmit` が成功すること
 - 既存のテストが全てパスすること

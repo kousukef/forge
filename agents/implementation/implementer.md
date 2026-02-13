@@ -2,6 +2,7 @@
 name: implementer
 description: "タスク単位でTDD駆動の実装を行うサブエージェント"
 tools: [Read, Write, Edit, Bash, Glob, Grep]
+permissionMode: bypassPermissions
 skills: [test-driven-development, iterative-retrieval, verification-before-completion]
 ---
 
@@ -35,7 +36,7 @@ skills: [test-driven-development, iterative-retrieval, verification-before-compl
    - **GIVEN** → Arrange（テストセットアップ）
    - **WHEN** → Act（アクション実行）
    - **THEN** → Assert（アサーション）
-2. `pnpm vitest run [テストファイル]` でテストが失敗することを確認
+2. `npx vitest run [テストファイル]` でテストが失敗することを確認
 3. テストが正しい理由で失敗していることを確認
 
 ### GREEN（最小限のコードを書く）
