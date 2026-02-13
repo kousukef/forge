@@ -1,5 +1,6 @@
 ---
 description: "開発から得た学びを文書化し、スペックマージとアーカイブを行い、将来の開発にフィードバックする"
+disable-model-invocation: true
 ---
 
 # /compound コマンド

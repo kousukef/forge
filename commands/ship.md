@@ -1,5 +1,6 @@
 ---
 description: "設計から実装、レビュー、テスト、学びの文書化までを連鎖実行する完全自律モード"
+disable-model-invocation: true
 ---
 
 # /ship コマンド

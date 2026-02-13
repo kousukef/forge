@@ -1,5 +1,6 @@
 ---
 description: "テストスイートを実行し、カバレッジと結果を検証する。修正が機能することを証明するまで完了としない"
+disable-model-invocation: true
 ---
 
 # /test コマンド
@@ -21,11 +22,11 @@ description: "テストスイートを実行し、カバレッジと結果を検
 
 以下を順番に実行する：
 
-1. **ユニットテスト実行**: `pnpm vitest run`
-2. **型チェック**: `pnpm tsc --noEmit`
-3. **リント**: `pnpm eslint .`
-4. **ビルド検証**: `pnpm build`
-5. **E2Eテスト実行**（該当する場合）: `pnpm playwright test`
+1. **ユニットテスト実行**: `npx vitest run`
+2. **型チェック**: `npx tsc --noEmit`
+3. **リント**: `npx eslint .`
+4. **ビルド検証**: `npm run build`
+5. **E2Eテスト実行**（該当する場合）: `npx playwright test`
 6. **カバレッジ確認**: 80%以上を目標
 
 ### Step 2: 結果分析

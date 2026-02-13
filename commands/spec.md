@@ -1,5 +1,6 @@
 ---
 description: "提案書から実装仕様とタスクリストを作成する。リサーチエージェントを並列起動し、Web検索とContext7 MCPで最新情報を収集する"
+disable-model-invocation: true
 ---
 
 # /spec コマンド

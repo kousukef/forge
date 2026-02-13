@@ -1,5 +1,6 @@
 ---
 description: "機能設計の前にソクラテス式対話で要件を深掘りする"
+disable-model-invocation: true
 ---
 
 # /brainstorm コマンド

@@ -1,5 +1,6 @@
 ---
 description: "実装済みコードを7つの専門レビュアーエージェントで並列レビューする"
+disable-model-invocation: true
 ---
 
 # /review コマンド
