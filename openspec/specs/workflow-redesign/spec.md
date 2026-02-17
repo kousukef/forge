@@ -26,12 +26,17 @@
 - **THEN** Agent Teams を使用せず、全タスクを Task(subagent) で実行する
 
 ### Requirement: /implement コマンドのモード選択
-/implement コマンドは実行開始時に AskUserQuestion でモード選択を提示する SHALL。
+/implement コマンドは `--teams` / `--agents` フラグで実行モードを選択する SHALL。フラグ省略時はデフォルトモード（Sub Agents）を使用する SHALL。
 
-#### Scenario: モード選択の提示
-- **GIVEN** /implement コマンドが起動された
-- **WHEN** タスク分析が完了した後
-- **THEN** 「Teams モード（推奨: 独立タスクN個検出）」と「Sub Agents のみモード」の選択肢を提示する
+#### Scenario: --teams フラグによる Teams モード選択
+- **GIVEN** /implement コマンドが `--teams` フラグ付きで起動された
+- **WHEN** コマンドが $ARGUMENTS を解析した後
+- **THEN** AskUserQuestion を表示せず、直接 Teams モードで実行する
+
+#### Scenario: フラグ省略時のデフォルトモード
+- **GIVEN** /implement コマンドがフラグなしで起動された
+- **WHEN** コマンドが $ARGUMENTS を解析した後
+- **THEN** デフォルトの Sub Agents モードで実行する
 
 ### Requirement: /implement コマンドの実行方式
 Main Agent が直接 Task(implementer) または TeamCreate で実装を管理する2層アーキテクチャを使用する SHALL。implement-orchestrator は /implement コマンドからは使用しない。
