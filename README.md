@@ -43,6 +43,7 @@ cp -r commands/ ~/.claude/commands/
 cp -r agents/ ~/.claude/agents/
 cp -r skills/ ~/.claude/skills/
 cp -r rules/ ~/.claude/rules/
+cp -r reference/ ~/.claude/reference/
 cp -r hooks/ ~/.claude/hooks/
 cp -r docs/ ~/.claude/docs/
 cp settings.json ~/.claude/settings.json
@@ -58,7 +59,7 @@ mkdir -p ~/.claude
 rsync -av --exclude='README.md' --exclude='.git' --exclude='forge-system-prompt.md' ./ ~/.claude/
 ```
 
-> **注意**: 既に `~/.claude/settings.json` が存在する場合は、手動でマージしてください。上書きすると既存のフック設定が消えます。
+> **注意**: 既に `~/.claude/settings.json` が存在する場合は、手動でマージしてください。上書きすると既存のフック設定が消えます。`settings.template.json` をテンプレートとして参照できます。
 
 ### コピー先の確認
 
@@ -66,21 +67,25 @@ rsync -av --exclude='README.md' --exclude='.git' --exclude='forge-system-prompt.
 
 ```
 ~/.claude/
-├── commands/           # スラッシュコマンド（7 個）
+├── commands/           # スラッシュコマンド（9 個）
 ├── agents/
 │   ├── research/       # リサーチエージェント（4 個）
+│   ├── spec/           # スペックエージェント（1 個）
+│   ├── orchestration/  # オーケストレーションエージェント（1 個）
 │   ├── implementation/ # 実装エージェント（3 個）
 │   └── review/         # レビューエージェント（7 個）
-├── skills/             # スキル定義（5 個）
+├── skills/             # スキル定義（6 個）
 ├── rules/
-│   ├── common/         # 共通ルール（5 個）
+│   └── core-essentials.md  # 常時読み込みルール
+├── reference/          # オンデマンド参照ルール（10 個）
+│   ├── common/         # 共通規約
 │   ├── nextjs/         # Next.js 規約
 │   ├── prisma/         # Prisma 規約
 │   └── terraform/      # Terraform 規約
-├── hooks/              # 自動品質ゲート（4 個）
+├── hooks/              # 自動品質ゲート（9 個）
 ├── docs/
 │   └── compound/       # 複利ドキュメント
-└── settings.json       # フック設定
+└── settings.json       # フック・パーミッション設定
 ```
 
 ### アンインストール
@@ -88,7 +93,7 @@ rsync -av --exclude='README.md' --exclude='.git' --exclude='forge-system-prompt.
 ```bash
 # Forge のファイルを削除（他の Claude Code 設定は残ります）
 rm -rf ~/.claude/commands ~/.claude/agents ~/.claude/skills \
-       ~/.claude/rules ~/.claude/hooks ~/.claude/docs
+       ~/.claude/rules ~/.claude/reference ~/.claude/hooks ~/.claude/docs
 # settings.json は手動で Forge のフック設定を削除してください
 ```
 
@@ -109,6 +114,10 @@ rm -rf ~/.claude/commands ~/.claude/agents ~/.claude/skills \
 /review        # コードレビュー
 /test          # テスト実行・検証
 /compound      # 学びを文書化
+
+# ユーティリティコマンド
+/commit        # Conventional Commits でコミット
+/handle-pr-review <PR番号>  # PR レビューコメントに対応
 ```
 
 ---
@@ -126,20 +135,26 @@ rm -rf ~/.claude/commands ~/.claude/agents ~/.claude/skills \
 
 ### `/spec` -- デルタスペック・技術設計・タスクリストの作成
 
-4 つのリサーチエージェントを**並列起動**し、情報を収集してから仕様を作成します。Delta 記法（ADDED/MODIFIED/REMOVED）と Given/When/Then シナリオで要件を記述します。
+リサーチエージェント群と spec-writer を起動し、情報を収集してから仕様を作成します。Teams モードと Sub Agents モードを選択可能。
+
+```
+/spec <change-name>              # デフォルト（Sub Agents モード）
+/spec <change-name> --teams      # Teams モード（エージェント間通信あり）
+/spec <change-name> --agents     # Sub Agents モード（並列独立実行）
+```
 
 ```
 ┌─────────────────────┐
 │      /spec 実行      │
 └──────────┬──────────┘
-           │ Phase 1: 並列リサーチ
+           │ Phase 1: リサーチ（4 エージェント並列）
     ┌──────┼──────┬──────────────┐
     ▼      ▼      ▼              ▼
  stack-  web-  codebase-  compound-
  docs   researcher analyzer  learnings
     │      │      │              │
     └──────┴──────┴──────────────┘
-           │ Phase 2: 仕様統合（3ファイル出力）
+           │ Phase 2: 仕様統合（spec-writer）
            ▼
    openspec/changes/<change-name>/
    ├── specs/<feature>/delta-spec.md
@@ -150,35 +165,39 @@ rm -rf ~/.claude/commands ~/.claude/agents ~/.claude/skills \
    ユーザーが承認 → 実装へ
 ```
 
+- Delta 記法（ADDED/MODIFIED/REMOVED）と Given/When/Then シナリオで要件を記述
 - 1 タスク = 2〜5 分で完了できるサイズ
 - 各タスクにファイルパス・検証方法を明記
 - テストタスクを実装タスクの**前**に配置（TDD）
 - 各タスクにデルタスペック要件へのリンクを含む
-- テストケースは Given/When/Then シナリオから導出
 
 ### `/implement` -- TDD 駆動の実装
 
-仕様書のタスクリストに基づき、タスクごとに 3 つのサブエージェントを順次起動します。
+仕様書のタスクリストに基づき、2 層アーキテクチャで実装します。Main Agent がオーケストレーション専任、実装は全て Sub Agent / Teams に委譲します。
 
 ```
-タスクごとのループ:
-
-  ┌─────────────┐
-  │ implementer │  TDD: RED → GREEN → REFACTOR
-  └──────┬──────┘
-         ▼
-  ┌──────────────────────┐
-  │ spec-compliance-     │  仕様との照合
-  │ reviewer             │  逸脱 → 差し戻し
-  └──────┬───────────────┘
-         ▼
-  ┌──────────────────────┐
-  │ code-quality-        │  品質チェック
-  │ reviewer             │  P1/P2 → 差し戻し
-  └──────┬───────────────┘
-         ▼
-    次のタスクへ（3 タスクごとに全テスト実行）
+/implement <change-name>              # デフォルト（Sub Agents モード）
+/implement <change-name> --teams      # Teams モード
+/implement <change-name> --agents     # Sub Agents モード
 ```
+
+```
+Main Agent（チームリーダー / オーケストレーション専任）
+  │ tasks.md + design.md を読み込み
+  │ タスク分析・依存関係構築
+  │
+  ├─ [Teams モード] TeamCreate → 実装チーム
+  │   ├─ implementer teammates × N（TDD: RED → GREEN → REFACTOR）
+  │   ├─ spec-compliance-reviewer（逸脱検出 → implementer に直接フィードバック）
+  │   └─ build-error-resolver（ビルドエラー時に投入）
+  │
+  └─ [Sub Agents モード] Task(implementer) × N
+      ├─ 並列可能なタスクは同時に Task 起動
+      ├─ 検証失敗時: Task(build-error-resolver) で修正
+      └─ スペック準拠: Task(spec-compliance-reviewer) で確認
+```
+
+**Context Isolation Policy**: Main Agent は実装ファイルの Read / Write / Edit を行わない。全ての実装作業をエージェントに委譲することで、コンテキストウィンドウを保護します。
 
 ### `/review` -- 7 専門レビュアーによる並列レビュー
 
@@ -218,6 +237,21 @@ rm -rf ~/.claude/commands ~/.claude/agents ~/.claude/skills \
 - **スペックマージ**: `openspec/changes/<change-name>/specs/` → `openspec/specs/` にマージ
 - **変更アーカイブ**: `openspec/changes/<change-name>/` → `openspec/changes/archive/` に移動
 
+### `/commit` -- Conventional Commits でコミット
+
+ステージされた変更（なければ全変更を自動ステージ）から Conventional Commits 形式のメッセージを生成してコミットします。
+
+- 事前に `npm lint` と `npm check-types` を自動実行（`--no-verify` でスキップ可能）
+- `git diff` で変更内容を分析し、適切なコミットメッセージを生成
+
+### `/handle-pr-review` -- PR レビューコメント対応
+
+PR のレビューコメントを分析し、必要な修正・コミット・プッシュ・スレッド返信を一括処理します。
+
+```
+/handle-pr-review <PR番号>
+```
+
 ### `/ship` -- 完全自律モード
 
 全コマンドを連鎖実行する完全自律パイプラインです。
@@ -250,6 +284,24 @@ rm -rf ~/.claude/commands ~/.claude/agents ~/.claude/skills \
 | codebase-analyzer | 既存コードのパターン・影響範囲分析 | プロジェクトファイル |
 | compound-learnings-researcher | 過去の学びから関連教訓を抽出 | `docs/compound/` |
 
+### スペックエージェント（`agents/spec/`）
+
+`/spec` の Phase 2 でリサーチ結果を統合し、仕様書を生成します。
+
+| エージェント | 役割 | モデル |
+|-------------|------|--------|
+| spec-writer | リサーチ結果を統合し design.md / tasks.md / delta-spec を生成 | sonnet |
+
+Teams モードでは、リサーチャーに追加調査を依頼したり、矛盾を検出してエスカレーションを行います。
+
+### オーケストレーションエージェント（`agents/orchestration/`）
+
+`claude --agent implement-orchestrator` でメインスレッドとして起動する場合にのみ使用します。`/implement` コマンドからは使用しません。
+
+| エージェント | 役割 | モデル |
+|-------------|------|--------|
+| implement-orchestrator | 実装オーケストレーション専任（Write/Edit 禁止） | sonnet |
+
 ### 実装エージェント（`agents/implementation/`）
 
 `/implement` でタスクごとに起動されます。
@@ -266,41 +318,80 @@ rm -rf ~/.claude/commands ~/.claude/agents ~/.claude/skills \
 
 ---
 
+## Context Isolation Policy
+
+Main Agent のコンテキストウィンドウを保護し、大規模実装でも破綻しないようにする 2 層分離ルールです。
+
+### 2 層アーキテクチャ + 動的モード選択
+
+```
+Main Agent（オーケストレーション層 / チームリーダー）
+  │
+  ├─ [Teams モード] --teams フラグ
+  │   TeamCreate → teammate 間で SendMessage による直接通信
+  │   エージェント間の情報共有・フィードバックが成果を改善する場面で使用
+  │
+  └─ [Sub Agents モード] --agents フラグ（デフォルト）
+      Task(subagent) × N → 独立した並列実行
+      各エージェントが独立して作業でき、やりとりが不要な場面で使用
+```
+
+### Main Agent の責務と制限
+
+| 許可 | 禁止 |
+|------|------|
+| `.md` ファイル（仕様書・設計書）の Read | 実装ファイル（`.ts`, `.tsx`）の Read |
+| `git diff --stat` の実行 | `git diff`（全内容表示） |
+| タスク分析・依存関係構築 | Write / Edit で実装ファイルを編集 |
+| Sub Agent / Team の起動・管理 | SKILL.md の Read（名前のみ渡す） |
+| 検証コマンド実行（`npm test`, `tsc --noEmit`） | 型エラー・lint エラーの直接修正 |
+
+---
+
 ## スキル
 
-エージェントの行動規範を定義する方法論です。
+エージェントの行動規範を定義する方法論です。**1% ルール**: 1% でも適用される可能性があれば、そのスキルを呼び出します。
 
 | スキル | 概要 |
 |--------|------|
+| forge-skill-orchestrator | 作業開始時のスキル判定・ルーティング（1% ルール適用） |
 | test-driven-development | TDD の絶対ルール。テスト前のコードは削除してやり直し |
 | systematic-debugging | 再現→原因特定→修正→防御の 4 フェーズデバッグ |
 | verification-before-completion | テスト実行結果を貼り付けて完了を証明 |
 | iterative-retrieval | Glob → Grep → Read で段階的にコンテキスト取得 |
 | strategic-compact | コンテキストウィンドウ 80% 超過時の手動コンパクション |
 
+### スキル注入メカニズム
+
+Sub Agent にはスキル**名**のみを渡します。Claude Code がスキル名からパスを自動解決し、読み込みます。
+
+- プロジェクト固有: `<project>/.claude/skills/`（優先度 1）
+- グローバル: `~/.claude/skills/`（優先度 2）
+
 ---
 
 ## ルール
 
-コーディング規約と技術スタック固有の規約を定義します。
+### 常時読み込み: `rules/core-essentials.md`
 
-### 共通ルール（`rules/common/`）
+エスカレーションポリシー・セキュリティ必須事項・Git コミット形式の最小限ルールを常時適用します。
 
-| ルール | 内容 |
-|--------|------|
-| coding-style | ファイルサイズ（200-400 行推奨）、命名規約、インポート順序 |
-| git-workflow | ブランチ戦略、Conventional Commits、コミット粒度 |
-| testing | Vitest / Playwright / Testing Library の使い方 |
-| security | シークレット管理、入力バリデーション（Zod）、XSS/CSRF 対策 |
-| performance | Server Components 優先、N+1 防止、Web Vitals 目標 |
+### オンデマンド参照: `reference/`
 
-### 技術スタック固有ルール
+作業対象に応じて必要なファイルを読み込みます。
 
-| ルール | 内容 |
-|--------|------|
-| nextjs/conventions | App Router ファイル構成、Server/Client Components 使い分け、Route Handlers / Server Actions 設計 |
-| prisma/conventions | スキーマ命名、マイグレーション戦略、クエリ最適化、インデックス設計 |
-| terraform/conventions | ファイル構成、モジュール化、ステート管理、IAM 最小権限 |
+| 参照ファイル | 読み込むタイミング |
+|-------------|-------------------|
+| `reference/typescript-rules.md` | TypeScript 実装・型設計時 |
+| `reference/coding-standards.md` | コーディング規約の確認時 |
+| `reference/core-rules.md` | フェーズ管理・検証ゲート確認時 |
+| `reference/workflow-rules.md` | セッション管理・チェックポイント時 |
+| `reference/common/coding-style.md` | ファイルサイズ・命名規約確認時 |
+| `reference/common/testing.md` | テスト作成・TDD 実践時 |
+| `reference/common/performance.md` | パフォーマンス最適化時 |
+| `reference/nextjs/conventions.md` | Next.js App Router 作業時 |
+| `reference/prisma/conventions.md` | Prisma スキーマ・クエリ作業時 |
+| `reference/terraform/conventions.md` | Terraform IaC 作業時 |
 
 ---
 
@@ -308,12 +399,29 @@ rm -rf ~/.claude/commands ~/.claude/agents ~/.claude/skills \
 
 コード品質を自動的に守るガードレールです。
 
+### 品質ゲート
+
 | フック | タイミング | 動作 |
 |--------|-----------|------|
 | block-unnecessary-files | Write 前 | プロジェクトルートへの不要な .md/.txt 作成をブロック（`docs/`、`openspec/` 配下は許可） |
 | detect-console-log | Write 後 | .ts/.tsx ファイル内の `console.log` を警告（`console.error`/`console.warn` は許可） |
 | require-tmux-for-servers | Bash 前 | `npm run dev` 等の長時間プロセスを tmux 外で実行するのをブロック |
 | gate-git-push | Bash 前 | `git push` 時にレビュー完了を確認。`--force` はブロック |
+
+### セッション管理
+
+| フック | タイミング | 動作 |
+|--------|-----------|------|
+| session-start | セッション開始時 | セッション統計の表示、コンテキスト読み込み |
+| session-end | セッション終了時 | チェックポイント保存、学びの同期 |
+| pre-compact | コンパクション前 | コンテキスト圧縮前の重要情報保護 |
+
+### 自動化
+
+| フック | タイミング | 動作 |
+|--------|-----------|------|
+| detect-corrections | 監視 | Claude の自己修正パターンを検出 |
+| task-completed | タスク完了時 | タスク完了後の自動処理 |
 
 ---
 
@@ -337,7 +445,7 @@ rm -rf ~/.claude/commands ~/.claude/agents ~/.claude/skills \
 | `/implement` Step 2 | セキュリティ・DB・アーキテクチャ関連タスク、仕様の曖昧性 |
 | `/review` 結果検証 | レビュアー間の矛盾、アーキテクチャ変更を伴う P1 指摘 |
 
-詳細は `rules/common/escalation.md` を参照。
+詳細は `rules/core-essentials.md` を参照。
 
 ---
 
@@ -348,21 +456,32 @@ rm -rf ~/.claude/commands ~/.claude/agents ~/.claude/skills \
 ```
 forge/
 ├── README.md
-├── commands/                    # → ~/.claude/commands/
+├── CLAUDE.md                        # ワークフローシステム定義
+├── forge-system-prompt.md           # システムプロンプトテンプレート
+├── settings.json                    # → ~/.claude/settings.json
+├── settings.template.json           # 設定テンプレート
+│
+├── commands/                        # → ~/.claude/commands/
 │   ├── brainstorm.md
 │   ├── spec.md
 │   ├── implement.md
 │   ├── review.md
 │   ├── test.md
 │   ├── compound.md
-│   └── ship.md
+│   ├── ship.md
+│   ├── commit.md
+│   └── handle-pr-review.md
 │
-├── agents/                      # → ~/.claude/agents/
+├── agents/                          # → ~/.claude/agents/
 │   ├── research/
 │   │   ├── stack-docs-researcher.md
 │   │   ├── codebase-analyzer.md
 │   │   ├── web-researcher.md
 │   │   └── compound-learnings-researcher.md
+│   ├── spec/
+│   │   └── spec-writer.md
+│   ├── orchestration/
+│   │   └── implement-orchestrator.md
 │   ├── implementation/
 │   │   ├── implementer.md
 │   │   ├── spec-compliance-reviewer.md
@@ -376,34 +495,51 @@ forge/
 │       ├── type-safety-reviewer.md
 │       └── api-contract-reviewer.md
 │
-├── skills/                      # → ~/.claude/skills/
+├── skills/                          # → ~/.claude/skills/
+│   ├── forge-skill-orchestrator/SKILL.md
 │   ├── test-driven-development/SKILL.md
 │   ├── systematic-debugging/SKILL.md
 │   ├── verification-before-completion/SKILL.md
 │   ├── iterative-retrieval/SKILL.md
 │   └── strategic-compact/SKILL.md
 │
-├── rules/                       # → ~/.claude/rules/
+├── rules/                           # → ~/.claude/rules/
+│   └── core-essentials.md           # 常時読み込み
+│
+├── reference/                       # → ~/.claude/reference/
+│   ├── typescript-rules.md
+│   ├── coding-standards.md
+│   ├── core-rules.md
+│   ├── workflow-rules.md
 │   ├── common/
 │   │   ├── coding-style.md
-│   │   ├── git-workflow.md
 │   │   ├── testing.md
-│   │   ├── security.md
 │   │   └── performance.md
 │   ├── nextjs/conventions.md
 │   ├── prisma/conventions.md
 │   └── terraform/conventions.md
 │
-├── hooks/                       # → ~/.claude/hooks/
+├── hooks/                           # → ~/.claude/hooks/
 │   ├── block-unnecessary-files.js
 │   ├── detect-console-log.js
 │   ├── require-tmux-for-servers.js
-│   └── gate-git-push.js
+│   ├── gate-git-push.js
+│   ├── session-start.js
+│   ├── session-end.js
+│   ├── pre-compact.js
+│   ├── detect-corrections.js
+│   ├── task-completed.js
+│   └── package.json
 │
-├── docs/                        # → ~/.claude/docs/
-│   └── compound/                # 複利ドキュメント
+├── docs/                            # → ~/.claude/docs/
+│   ├── compound/                    # 複利ドキュメント
+│   ├── designs/
+│   └── specs/
 │
-└── settings.json                # → ~/.claude/settings.json
+└── openspec/                        # OpenSpec 仕様管理
+    ├── specs/                       # 累積スペック（マージ済み）
+    └── changes/                     # 変更単位の作業ディレクトリ
+        └── archive/                 # 完了した変更のアーカイブ
 ```
 
 ---
@@ -426,12 +562,16 @@ forge/
 │          │──▶│              │  │              │  │              │
 │          │──▶│compound-     │  │              │  │              │
 │          │   │learnings     │  │              │  │              │
-└────┬─────┘   └──────────────┘  └──────────────┘  └──────────────┘
-     │ ユーザー承認               （4 エージェント並列）
+│          │   └──────────────┘  └──────────────┘  └──────────────┘
+│          │          ↓ リサーチ結果統合
+│          │   ┌──────────────┐
+│          │──▶│ spec-writer  │→ design.md / tasks.md / delta-spec
+└────┬─────┘   └──────────────┘
+     │ ユーザー承認
      ▼
-┌──────────┐   タスクごとに:
-│implement │──▶ implementer → spec-compliance → code-quality
-└────┬─────┘   （3 タスクごとに回帰テスト）
+┌──────────┐   Teams モード / Sub Agents モード:
+│implement │──▶ implementer × N → spec-compliance → build-error
+└────┬─────┘   （Context Isolation: Main Agent は実装に触れない）
      ▼
 ┌──────────┐   7 レビュアー並列:
 │  review  │──▶ security / performance / architecture / prisma
@@ -502,14 +642,6 @@ openspec/
 ### `openspec` CLI との互換性
 
 OpenSpec の標準ディレクトリ構成をそのまま採用しているため、`openspec` CLI との互換性があります。
-
-### 移行ガイド
-
-| 旧パス | 新パス |
-|--------|--------|
-| `docs/designs/YYYY-MM-DD-<topic>.md` | `openspec/changes/<name>/proposal.md` |
-| `docs/specs/YYYY-MM-DD-<topic>.md` | `openspec/changes/<name>/` (3ファイル) |
-| `docs/compound/` | `docs/compound/`（変更なし） |
 
 ---
 
