@@ -1,6 +1,7 @@
 ---
-description: "仕様書のタスクリストに基づきTDD駆動で実装する。タスクごとにサブエージェントをディスパッチし、デュアルレビューで品質を担保する"
+description: "仕様書のタスクリストに基づきTDD駆動で実装する。Main Agentがタスク分析し、Teams/Sub Agentsモードを選択して実行"
 disable-model-invocation: true
+argument-hint: "<change-name> [--teams|--agents]"
 ---
 
 # /implement コマンド
@@ -8,76 +9,118 @@ disable-model-invocation: true
 ## 目的
 
 仕様書のタスクリストに基づいてTDD駆動でコードを実装する。
+Main Agent がチームリーダーとして直接管理する2層アーキテクチャを採用し、Teams モードと Sub Agents モードを動的に選択する。
 
-## Skill Activation
+## 2層アーキテクチャ
 
-1. `forge-skill-orchestrator` スキルを呼び出し、実装フェーズに適用される全 Skill を確認する
-2. 必須スキル:
-   - `test-driven-development` -- TDD メソドロジー
-   - `verification-before-completion` -- 完了前検証
-3. サブエージェント起動時、各エージェントの `skills` frontmatter に記載された Skill の SKILL.md を読み込み、タスクプロンプトに含める
-4. 対象ファイルのドメインに応じてドメイン Skill も呼び出す（例: .tsx → `nextjs-frontend`）
+```
+Main Agent（チームリーダー）
+  | tasks.md + design.md の内容を読み込み
+  | タスク分析・依存関係構築
+  | 引数（--teams/--agents）でモード決定
+  |
+  +-- [Teams モード] TeamCreate -> 実装チーム
+  |   +-- implementer teammates x N（各自が異なるファイルセットを所有）
+  |   +-- spec-compliance-reviewer（逸脱検出 -> implementer に直接フィードバック）
+  |   +-- build-error-resolver（ビルドエラー時に投入）
+  |   Main Agent = リーダー（Delegate モード推奨）
+  |   完了後: TeamDelete でクリーンアップ
+  |
+  +-- [Sub Agents モード] Task(implementer) x N
+      並列可能なタスクは同時に Task 起動
+      検証失敗時: Task(build-error-resolver) で修正
+      スペック準拠: Task(spec-compliance-reviewer) で確認
+```
+
+## Main Agent 禁止事項（Context Isolation Policy）
+
+以下の操作は Context Isolation Policy により禁止:
+
+1. **Write / Edit ツールで実装ファイルを編集してはならない**
+2. **実装ファイル（`.ts`, `.tsx` 等）を Read してはならない**
+3. **SKILL.md を Read してはならない**
+4. **型エラー・lint エラーを直接修正してはならない**
+5. **テストコードを直接記述してはならない**
+6. **「自分でやった方が速い」と判断してはならない**
+
+全ての実装作業は implementer / build-error-resolver / spec-compliance-reviewer に委譲する。
 
 ## ワークフロー
 
+### Step 0: 引数の解析
+
+$ARGUMENTS を解析し、以下を決定する:
+
+1. **change-name**: `--teams`/`--agents` フラグを除いた文字列
+   - 指定あり: `openspec/changes/<change-name>/` を対象とする
+   - 省略: `openspec/changes/` 内のアクティブ変更（`archive/` 以外）を自動検出
+     - 1つ → 自動選択
+     - 複数 → AskUserQuestion で選択
+     - 0 → エラー（先に `/brainstorm` を実行するよう案内）
+2. **mode**: `--teams` → Teams モード、`--agents` → Sub Agents モード、省略 → デフォルト（`agents`）
+
 ### Step 1: 準備
 
-1. gitワークツリーを作成（`git worktree add`）してブランチを分離
-2. `openspec/changes/<change-name>/` から以下の3ファイルを読み込む：
+1. git worktree を作成（`git worktree add`）してブランチを分離
+2. `openspec/changes/<change-name>/` から以下を読み込む:
    - `tasks.md`（タスクリスト）
-   - `specs/`（デルタスペック）
    - `design.md`（技術設計）
-3. タスクリストを解析し、実行順序を決定
+   - `specs/` -- **Glob でファイルパス一覧のみ取得。内容は読まない**
 
-### Step 2: タスク実行ループ（各タスクごとに繰り返し）
+### Step 2: タスク分析
 
-各タスクに対して以下の3つのサブエージェントを**順次**起動する：
+1. tasks.md のタスク依存関係を分析
+2. 独立タスク（依存なし）が2つ以上あるか判定
+3. 独立タスクが異なるファイルセットを編集するか判定
 
-**事前エスカレーションチェック**: 各タスクのディスパッチ前に、タスク内容を確認する。以下に該当する場合は `AskUserQuestion` でユーザーに確認してからサブエージェントを起動する：
-- タスクがセキュリティ関連（認証・認可・暗号化・PII処理）の実装を含む
-- タスクがDBスキーマ変更（Prismaマイグレーション）を含む
-- タスクがアーキテクチャ変更（新レイヤー追加、API契約変更）を含む
+### Step 3: モード分岐
 
-**A. implementerサブエージェント**:
-- タスクテキスト + プロジェクトコンテキスト + デルタスペックの Given/When/Then を受け取る
-- **TDD厳守**：必ずテストを先に書く（RED → GREEN → REFACTOR）
-  - RED: Given/When/Then シナリオから失敗するテストを書く
-  - GREEN: テストを通す最小限のコードを書く
-  - REFACTOR: コードを整理する
-- テストの前にコードを書いた場合、**そのコードを削除してやり直す**
-- `iterative-retrieval`スキルを使用して、必要なコンテキストを段階的に取得
-- ビルドエラーが発生した場合は `build-error-resolver` エージェントに委譲
+Step 0 で決定した mode に基づいて分岐する:
 
-**B. spec-compliance-reviewerサブエージェント**:
-- implementerの成果物をデルタスペックと照合
-- ADDED/MODIFIED/REMOVED 各要件タイプ別に確認
-- Given/When/Then シナリオとテストの対応を検証
-- 実装の逸脱がある場合はimplementerに差し戻し
-- **仕様自体に問題がある場合**（曖昧性、矛盾、情報不足）は implementer への差し戻しではなく `AskUserQuestion` でユーザーにエスカレーション
+- **`teams`**: Step 4a（Teams モード）に進む
+- **`agents`**（デフォルト）: Step 4b（Sub Agents モード）に進む
 
-**C. code-quality-reviewerサブエージェント**:
-- コード品質をチェック（型安全性、エラーハンドリング、パフォーマンス）
-- 軽微な問題はそのまま通す（P3）
-- 重大な問題（P1/P2）はimplementerに差し戻し
+### Step 4a: Teams モードの実行
 
-**D. タスク完了コミット**:
-- A〜Cの全サブエージェントが合格したら、そのタスクの変更を即座にコミットする
-- コミット形式: `feat(<scope>): <タスクの説明>`（Conventional Commits 準拠）
-- 1タスク = 1コミット（論理的に独立した変更単位を維持）
-- コミット前に `git diff --staged` で変更内容を確認する
-- 差し戻しが発生した場合は、修正完了後にコミットする
+1. **TeamCreate で実装チームを作成**
+   - Delegate モード推奨（Main Agent が自分で実装するのを防ぐ）
+   - implementer teammates x N を起動（各自が異なるファイルセットを所有）
+   - spec-compliance-reviewer を teammate として起動（逸脱検出 -> implementer に直接フィードバック）
+   - build-error-resolver は必要時にのみ追加
 
-### Step 3: タスク間チェックポイント
+2. **タスクはチーム内の TaskList で管理**
+   - 各 implementer に担当タスクとファイルセットを明確に割り当てる
+   - 5-6 タスク / teammate を目安に分割
 
-- 3タスクごとに全テストを実行して回帰がないか確認
-- ビルドが通るか確認（`npm run build`）
-- 失敗した場合はそのタスクの修正を優先
+3. **Teams 内エスカレーションフロー**
+   - Team Member が疑問発見 -> SendMessage で Main Agent に選択肢付きで送信
+   - Main Agent -> AskUserQuestion でユーザーに選択肢をそのまま提示
+   - ユーザー回答 -> Main Agent -> SendMessage で Team Member に回答をそのまま返信
 
-### Step 4: 完了
+4. **全タスク完了後: TeamDelete でクリーンアップ**
 
-- 全タスク完了後、全テスト実行（`npx vitest run` + `npx tsc --noEmit`）
-- テスト・型チェックが失敗した場合は修正してコミット
-- 実装サマリーを出力
+### Step 4b: Sub Agents モードの実行
+
+1. **各タスクに対して Task(implementer) を起動**
+   - 並列可能なタスクは単一メッセージで複数 Task を同時起動
+   - 依存タスクは前タスク完了後に順次起動
+   - 各 implementer プロンプトにスキル名（名前のみ）を含める
+
+2. **implementer 完了後の検証**
+   - `npx vitest run` / `npx tsc --noEmit` / `git diff --stat`
+   - 失敗時: Task(build-error-resolver) に委譲（最大3回リトライ）
+   - 成功時: Task(spec-compliance-reviewer) でスペック準拠確認
+
+### Step 5: 検証
+
+全タスク完了後:
+1. `npx vitest run` で全テスト実行
+2. `npx tsc --noEmit` で型チェック
+3. `git log --oneline` で全コミットを確認
+
+### Step 6: 完了報告
+
+実装完了サマリーをユーザーに出力する。
 
 ## 実装サマリー形式
 
@@ -89,14 +132,38 @@ disable-model-invocation: true
 - [x] Task 2: [タスク名]
 ...
 
-## 変更ファイル
-- `src/app/xxx/page.tsx`（新規）
-- `src/lib/xxx.ts`（変更）
-...
+## コミット一覧
+[git log --oneline の出力]
 
 ## テスト結果
-[テスト実行結果を貼付]
+[テスト実行結果]
 
 ## 注意事項
 [あれば記載]
+```
+
+## implementer プロンプト構造
+
+Sub Agents モードで Task(implementer) を起動する際のプロンプトテンプレート:
+
+```
+TASK: [タスクテキスト]
+
+REQUIRED SKILLS:
+- test-driven-development
+- iterative-retrieval
+- verification-before-completion
+- [ドメイン固有スキル名]
+
+PROJECT RULES（自分で Read して従うこと）:
+- CLAUDE.md
+
+SPEC FILES（自分で Read して実装すること）:
+- openspec/changes/<CHANGE_NAME>/specs/[該当スペックファイル]
+- openspec/changes/<CHANGE_NAME>/design.md
+
+COMPLETION CRITERIA:
+- テストがパスすること
+- 型チェックがパスすること
+- コミット済みであること
 ```

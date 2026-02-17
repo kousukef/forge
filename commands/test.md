@@ -9,13 +9,6 @@ disable-model-invocation: true
 
 テストスイートを実行し、結果を検証する。修正が機能することを証明するまで完了としない。
 
-## Skill Activation
-
-1. `forge-skill-orchestrator` スキルを呼び出し、テストフェーズに適用される Skill を確認する
-2. 必須スキル:
-   - `verification-before-completion` -- テスト結果の証拠提示
-   - `systematic-debugging` -- テスト失敗時の体系的分析
-
 ## ワークフロー
 
 ### Step 1: テスト実行

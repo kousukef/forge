@@ -1,6 +1,7 @@
 ---
-description: "提案書から実装仕様とタスクリストを作成する。リサーチエージェントを並列起動し、Web検索とContext7 MCPで最新情報を収集する"
+description: "提案書から実装仕様とタスクリストを作成する。Teams/Sub Agentsモードを選択し、リサーチエージェント群とspec-writerで仕様を生成する"
 disable-model-invocation: true
+argument-hint: "<change-name> [--teams|--agents]"
 ---
 
 # /spec コマンド
@@ -9,33 +10,77 @@ disable-model-invocation: true
 
 提案書（`openspec/changes/<change-name>/proposal.md`）から詳細なデルタスペック・技術設計・実行可能なタスクリストを作成する。
 
-## Skill Activation
-
-1. `forge-skill-orchestrator` スキルを呼び出し、仕様設計フェーズに適用される Skill を確認する
-2. リサーチサブエージェントを起動する際、各エージェントの `skills` frontmatter に記載された Skill の SKILL.md を読み込み、タスクプロンプトに含める
-
 ## ワークフロー
 
-### Phase 1: リサーチ（並列エージェント起動）
+### Step 0: 引数の解析
 
-以下の4つのリサーチエージェントを**並列で**起動する：
+$ARGUMENTS を解析し、以下を決定する:
+
+1. **change-name**: `--teams`/`--agents` フラグを除いた文字列
+   - 指定あり: `openspec/changes/<change-name>/` を対象とする
+   - 省略: `openspec/changes/` 内のアクティブ変更（`archive/` 以外）を自動検出
+     - 1つ → 自動選択
+     - 複数 → AskUserQuestion で選択
+     - 0 → エラー（先に `/brainstorm` を実行するよう案内）
+2. **mode**: `--teams` → Teams モード、`--agents` → Sub Agents モード、省略 → デフォルト（`agents`）
+
+mode に基づいて Phase 1a または Phase 1b に進む。
+
+### Phase 1a: リサーチ＆スペックチーム（Teams モード）
+
+TeamCreate でリサーチ＆スペックチームを作成し、以下の5 teammate を起動する:
+
+```
+Main Agent（チームリーダー）
+  | proposal.md の内容をプロンプトで渡してチーム起動
+  |
+  +-- TeamCreate -> リサーチ＆スペックチーム
+      +-- codebase-analyzer: プロジェクト構造・既存パターン・影響範囲分析
+      +-- stack-docs-researcher: Context7 MCP経由で公式ドキュメント調査
+      +-- web-researcher: Web Searchで最新ベストプラクティス・落とし穴調査
+      +-- compound-learnings-researcher: docs/compound/ から過去の学び抽出
+      +-- spec-writer: リサーチ結果統合 -> design.md / tasks.md / delta-spec 生成
+```
+
+**spec-writer の役割:**
+- リサーチャー全員のタスク完了後、結果を読み込み・統合
+- 不足があれば SendMessage でリサーチャーに追加調査を依頼
+- リサーチ結果の検証（矛盾検出、セキュリティ判断等）を実施
+- エスカレーションが必要な場合は SendMessage で Main Agent に選択肢付きで送信
+- design.md, tasks.md, delta-spec.md を生成
+- 完了時にサマリーのみを Main Agent に SendMessage で送信
+
+**Main Agent はサマリーのみ受け取る（コンテキスト保護）。**
+
+**エスカレーションフロー:**
+- spec-writer / リサーチャーが疑問発見 -> SendMessage で Main Agent に選択肢付きで送信
+- Main Agent -> AskUserQuestion でユーザーに選択肢をそのまま提示
+- ユーザー回答 -> Main Agent -> SendMessage で Team Member に回答をそのまま返信
+
+チーム完了後: TeamDelete でクリーンアップ。
+
+### Phase 1b: リサーチ（Sub Agents モード）
+
+以下の4つのリサーチエージェントを**並列で**起動する:
 
 1. **stack-docs-researcher** -- Context7 MCP経由で関連フレームワーク（Next.js, Prisma, Terraform, GCP等）の公式ドキュメントから該当機能のベストプラクティスを取得
-2. **web-researcher** -- Web Searchを使って以下を検索：
+2. **web-researcher** -- Web Searchを使って以下を検索:
    - 該当技術の最新のベストプラクティス記事
    - 既知の落とし穴やバグレポート
    - コミュニティでの推奨パターン
    - 類似実装の参考例
-3. **codebase-analyzer** -- 現在のプロジェクト構造を分析：
+3. **codebase-analyzer** -- 現在のプロジェクト構造を分析:
    - 既存の規約・パターンを抽出
    - 影響を受けるファイルを特定
    - 依存関係を把握
    - `openspec/specs/` の既存スペックを読み込み、関連する要件とシナリオを抽出
 4. **compound-learnings-researcher** -- `docs/compound/` 配下の過去の学びを検索し、関連する教訓を抽出
 
-### Phase 1.5: リサーチ結果の検証
+### Phase 1.5: リサーチ結果の検証（Sub Agents モードのみ）
 
-Phase 1 の結果を統合する前に、以下の観点で検証する。該当する場合は `AskUserQuestion` でユーザーに確認してから Phase 2 に進む：
+Teams モードでは spec-writer がチーム内で検証を実施するため、このフェーズはスキップする。
+
+Sub Agents モードでは、Phase 1b の結果を統合する前に以下の観点で検証する。該当する場合は `AskUserQuestion` でユーザーに確認してから Phase 2 に進む:
 
 1. **リサーチ結果の矛盾**: 複数のリサーチエージェントが矛盾する推奨を返した場合（例: web-researcher と stack-docs-researcher で推奨パターンが異なる）
 2. **複数の有効なアーキテクチャ**: 技術的に同等な設計アプローチが複数存在し、プロジェクトの方針として選択が必要な場合
@@ -47,7 +92,9 @@ Phase 1 の結果を統合する前に、以下の観点で検証する。該当
 
 ### Phase 2: 仕様統合
 
-リサーチ結果を統合し、`openspec/changes/<change-name>/` 配下に以下の3ファイルを出力する：
+**Teams モード**: spec-writer が既にチーム内で生成済み。Main Agent は spec-writer からのサマリーを受け取り、Phase 3 に進む。
+
+**Sub Agents モード**: Main Agent がリサーチ結果を統合し、`openspec/changes/<change-name>/` 配下に以下の3ファイルを出力する:
 
 1. `specs/<feature>/delta-spec.md` -- デルタ要件（ADDED/MODIFIED/REMOVED + Given/When/Then）
 2. `design.md` -- リサーチサマリー + 技術設計

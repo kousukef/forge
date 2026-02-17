@@ -1,6 +1,7 @@
 ---
 description: "設計から実装、レビュー、テスト、学びの文書化までを連鎖実行する完全自律モード"
 disable-model-invocation: true
+argument-hint: "<change-name>"
 ---
 
 # /ship コマンド
@@ -8,11 +9,6 @@ disable-model-invocation: true
 ## 目的
 
 `/brainstorm` → `/spec` → `/implement` → `/review` → `/test` → `/compound` を連鎖実行する完全自律モード。
-
-## Skill Activation
-
-1. パイプライン開始時に `forge-skill-orchestrator` スキルを呼び出す
-2. 各フェーズ遷移時（brainstorm→spec→implement→review→test→compound）に `forge-skill-orchestrator` を再呼び出しし、フェーズに適した Skill を更新する
 
 ## ワークフロー
 

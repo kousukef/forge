@@ -1,6 +1,7 @@
 ---
 description: "実装済みコードを7つの専門レビュアーエージェントで並列レビューする"
 disable-model-invocation: true
+argument-hint: "<change-name>"
 ---
 
 # /review コマンド
@@ -9,10 +10,15 @@ disable-model-invocation: true
 
 実装済みコードを多角的にレビューする。
 
-## Skill Activation
+## 引数の解析
 
-1. `forge-skill-orchestrator` スキルを呼び出し、レビューフェーズに適用される Skill を確認する
-2. レビューサブエージェント起動時、各エージェントの `skills` frontmatter に記載された Skill の SKILL.md を読み込み、タスクプロンプトに含める
+$ARGUMENTS から change-name を決定する:
+
+- 指定あり: `openspec/changes/<change-name>/` を対象とする
+- 省略: `openspec/changes/` 内のアクティブ変更（`archive/` 以外）を自動検出
+  - 1つ → 自動選択
+  - 複数 → AskUserQuestion で選択
+  - 0 → エラー（先に `/brainstorm` を実行するよう案内）
 
 ## ワークフロー
 

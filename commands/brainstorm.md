@@ -1,6 +1,7 @@
 ---
 description: "機能設計の前にソクラテス式対話で要件を深掘りする"
 disable-model-invocation: true
+argument-hint: "<topic>"
 ---
 
 # /brainstorm コマンド
@@ -8,10 +9,6 @@ disable-model-invocation: true
 ## 目的
 
 機能設計の前にソクラテス式対話で要件を深掘りし、ミニマルで的確な提案書を作成する。
-
-## Skill Activation
-
-`forge-skill-orchestrator` スキルを呼び出し、設計フェーズに適用される Skill を確認する。
 
 ## OpenSpec 初期化
 
@@ -22,7 +19,7 @@ disable-model-invocation: true
 
 ## ワークフロー
 
-1. ユーザーのやりたいことを聞く
+1. $ARGUMENTS が指定されていればトピックとして使用し、省略されていればユーザーに「何を作りたいですか？」と質問する
 2. **一度に1つだけ質問する**（複数質問を一度に投げない）
 3. 可能な限り**選択肢形式**で質問する（A/B/C方式）
 4. **YAGNI原則**を徹底適用する -- 「それは本当に今必要か？」を常に問う

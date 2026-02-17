@@ -1,6 +1,7 @@
 ---
 description: "開発から得た学びを文書化し、スペックマージとアーカイブを行い、将来の開発にフィードバックする"
 disable-model-invocation: true
+argument-hint: "<change-name>"
 ---
 
 # /compound コマンド
@@ -9,9 +10,15 @@ disable-model-invocation: true
 
 今回の開発から得た学びを文書化し、デルタスペックを累積スペックにマージし、将来の開発にフィードバックする。
 
-## Skill Activation
+## 引数の解析
 
-`forge-skill-orchestrator` スキルを呼び出し、文書化フェーズに適用される Skill を確認する。
+$ARGUMENTS から change-name を決定する:
+
+- 指定あり: `openspec/changes/<change-name>/` を対象とする
+- 省略: `openspec/changes/` 内のアクティブ変更（`archive/` 以外）を自動検出
+  - 1つ → 自動選択
+  - 複数 → AskUserQuestion で選択
+  - 0 → エラー（先に `/brainstorm` を実行するよう案内）
 
 ## ワークフロー
 

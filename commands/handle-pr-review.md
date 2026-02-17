@@ -27,6 +27,7 @@ gh pr view $ARGUMENTS --comments --json reviews,reviewThreads
 各レビューコメントを確認し、対応が必要なものを特定します。
 
 **判断基準:**
+
 - バグ修正の指摘 → 対応必須
 - コードスタイル/品質の指摘 → 基本的に対応
 - 提案/オプション的な指摘 → 妥当性を判断して対応
@@ -37,6 +38,7 @@ gh pr view $ARGUMENTS --comments --json reviews,reviewThreads
 対応が必要なコメントについて、一つずつ修正を実装します。
 
 **重要なルール:**
+
 - 各修正は関連するファイルと内容に基づいて行う
 - 修正の根拠となるレビューコメントを把握しておく
 
@@ -48,6 +50,7 @@ gh pr view $ARGUMENTS --comments --json reviews,reviewThreads
 ✅ 必須: 具体的に何を変更したかを記述
 
 **コミットメッセージ例:**
+
 - `fix: null チェックを追加して型安全性を向上`
 - `refactor: 冗長な条件分岐を簡潔に修正`
 - `style: 変数名をより明確な名前に変更`
@@ -71,12 +74,14 @@ git push
 ✅ 必須: 各レビューコメントのスレッドに直接返信
 
 **返信方法:**
+
 ```bash
 # スレッドへの返信（conversation ID または review comment ID を使用）
 gh api repos/{owner}/{repo}/pulls/{pr}/comments/{comment_id}/replies -f body="返信内容"
 ```
 
 **返信内容の例:**
+
 - 修正した場合: `修正しました。[該当コミットハッシュ] で対応しています。`
 - 対応しない場合: `[理由を説明] のため、今回は対応を見送りました。ご意見ありがとうございます。`
 - 質問への回答: 質問に対する適切な説明
