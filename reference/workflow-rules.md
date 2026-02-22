@@ -26,7 +26,8 @@ Forge ワークフローのルール。セッション管理、タスク管理�
    - /test: テスト実行・証明
    - /compound: 学び記録・スペックマージ
 
-2. 小さな単位でコミット
+2. コミットはユーザーの明示的な指示で行う
+   - 自律的にコミットしない
    - 1コミット = 1つの論理的変更
 
 3. Compound Learning
@@ -56,7 +57,11 @@ openspec/
     │   ├── proposal.md     # /brainstorm で生成
     │   ├── design.md       # /spec で生成
     │   ├── tasks.md        # /spec で生成
-    │   └── specs/          # デルタスペック
+    │   ├── specs/          # デルタスペック（/spec で生成）
+    │   ├── interpretations/ # 仕様解釈ログ（/implement で生成）コミット対象外、/compound 後に削除
+    │   │   └── <task>.md   # 各タスクの Spec Interpretation Log
+    │   └── reviews/         # レビュー結果（/review で生成）コミット対象外、/compound 後に削除
+    │       └── review-summary.md
     └── archive/            # /compound で完了分をアーカイブ
 ```
 
@@ -71,7 +76,7 @@ openspec/
 2. タスク実行（/implement で TDD 実装）
    - RED → GREEN → REFACTOR
    - 小さな単位で進行
-   - テスト通過を確認してコミット
+   - テスト通過を確認（コミットはユーザー指示で行う）
 
 3. タスク完了
    - 全テスト通過
@@ -225,9 +230,9 @@ Main Agent（オーケストレーション層）
 
 - フェーズに沿った作業を行う
 - TDD を厳守する（RED → GREEN → REFACTOR）
-- 小さな単位でコミット
+- コミットはユーザーの明示的な指示で行う
 - 不明点はエスカレーションする
-- 検証を通過してからコミット
+- コミット前に検証（テスト + 型チェック）を通過させる
 - Compound Learning で学びを記録
 
 ### Don't

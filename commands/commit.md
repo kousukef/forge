@@ -26,7 +26,9 @@ Or with options:
    - `npm lint` to ensure code quality
    - `npm check-types` to check typescript types
 2. Checks which files are staged with `git status`
-3. If 0 files are staged, automatically adds all modified and new files with `git add`
+3. If 0 files are staged, automatically adds all modified and new files with `git add`, **excluding** the following paths:
+   - `openspec/changes/*/interpretations/`
+   - `openspec/changes/*/reviews/`
 4. Performs a `git diff` to understand what changes are being committed
 5. Analyzes the diff to determine if multiple distinct logical changes are present
 6. If multiple distinct changes are detected, suggests breaking the commit into multiple smaller commits
@@ -106,3 +108,4 @@ Example of splitting commits:
 - If suggesting multiple commits, it will help you stage and commit the changes separately
 - Always reviews the commit diff to ensure the message matches the changes
 - **Task document files should not be included in commits** - these are temporary planning documents and should be excluded from version control
+- **interpretations / reviews files must be excluded from `git add`** - `openspec/changes/*/interpretations/` and `openspec/changes/*/reviews/` are temporary working files used during the Forge workflow and must not be staged or committed. When auto-staging (0 files staged), these paths must be explicitly excluded

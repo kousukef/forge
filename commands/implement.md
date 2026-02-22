@@ -116,7 +116,7 @@ Step 0 で決定した mode に基づいて分岐する:
 全タスク完了後:
 1. `npx vitest run` で全テスト実行
 2. `npx tsc --noEmit` で型チェック
-3. `git log --oneline` で全コミットを確認
+3. `git diff --stat` で変更ファイル一覧を確認
 
 ### Step 6: 完了報告
 
@@ -132,8 +132,8 @@ Step 0 で決定した mode に基づいて分岐する:
 - [x] Task 2: [タスク名]
 ...
 
-## コミット一覧
-[git log --oneline の出力]
+## 変更ファイル一覧（`git diff --stat`）
+[git diff --stat の出力]
 
 ## テスト結果
 [テスト実行結果]
@@ -170,5 +170,5 @@ COMPLETION CRITERIA:
 - Spec Interpretation Log が出力済みであること
 - テストがパスすること
 - 型チェックがパスすること
-- コミット済みであること（Interpretation Log を含む）
+- Spec Interpretation Log の Phase B が追記済みであること
 ```

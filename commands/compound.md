@@ -20,31 +20,67 @@ $ARGUMENTS から change-name を決定する:
   - 複数 → AskUserQuestion で選択
   - 0 → エラー（先に `/brainstorm` を実行するよう案内）
 
+## 学習ソース
+
+以下のファイルを学習ソースとして使用する。全て `openspec/changes/<change-name>/` 配下のファイルである。
+
+| # | ファイル | 内容 | 必須 |
+|---|---|---|---|
+| 1 | `proposal.md` | 変更の意図 | No |
+| 2 | `design.md` | 設計判断 | No |
+| 3 | `interpretations/<task>.md` | 各タスクの判断ログ + 変更ファイル一覧 | No |
+| 4 | `reviews/review-summary.md` | レビュー指摘と修正内容 | No |
+
+### 読み込みフロー
+
+1. `openspec/changes/<change-name>/` を基点ディレクトリとする
+2. 以下の順序で各ファイルの存在チェックと読み込みを行う:
+   1. `proposal.md` -- 存在すれば読み込む。存在しなければスキップし、欠落している旨を記録する
+   2. `design.md` -- 存在すれば読み込む。存在しなければスキップし、欠落している旨を記録する
+   3. `interpretations/*.md` -- ディレクトリ内の全 `.md` ファイルを読み込む。ディレクトリが存在しない、または中身が空の場合はスキップし、欠落している旨を記録する
+   4. `reviews/review-summary.md` -- 存在すれば読み込む。存在しなければスキップする（`/review` 未実行の正常ケース）
+3. 存在するファイルのみで学習を実行する。全ファイルが欠落していてもエラーにはしないが、有用な学びの抽出は限定的になる旨をユーザーに伝える
+
+### フォールバック動作
+
+- **proposal.md 欠落**: 存在するファイルのみで学習を実行。振り返りレポートに「proposal.md が欠落しているため、変更の意図に関する学びの抽出が限定的」と記録する
+- **design.md 欠落**: 存在するファイルのみで学習を実行。振り返りレポートに「design.md が欠落しているため、設計判断に関する学びの抽出が限定的」と記録する
+- **interpretations が0件**: proposal.md と design.md のみで学習を実行。振り返りレポートに「interpretations が欠落しているため、実装判断に関する学びの抽出が限定的」と記録する
+- **review-summary.md 欠落**: スキップする。`/review` が実行されなかった正常ケースであり、特別な記録は不要
+
 ## ワークフロー
 
-1. 今回の開発セッションを振り返り、以下を抽出：
+1. **学習ソースの読み込み**: 上記「学習ソース」セクションに従い、対象ファイルを読み込む
+
+2. 読み込んだ学習ソースを元に、今回の開発セッションを振り返り、以下を抽出：
    - うまくいったパターン
    - 失敗して修正したこと
    - 予想外の落とし穴
    - 発見したベストプラクティス
    - 改善できるプロセス
 
-2. `docs/compound/YYYY-MM-DD-<topic>.md` に出力（複利ドキュメント形式に従う）
+3. `docs/compound/YYYY-MM-DD-<topic>.md` に出力（複利ドキュメント形式に従う）
 
-3. **Learning Router** を適用：学びを分類テーブルに基づいて分類し、閾値ルールに従って更新提案を生成する
+4. **Learning Router** を適用：学びを分類テーブルに基づいて分類し、閾値ルールに従って更新提案を生成する
    - 各学びの `artifact-targets` を判定する
    - 重大な学びは即座に更新差分を生成して提案する
    - 繰り返し発生する学びは過去記録と照合し、2回以上なら更新を提案する
    - 更新提案はアーティファクト種別ごとにグループ化してユーザーに提示する
    - ユーザー承認後に適用する
 
-4. **スペックマージ**: `openspec/changes/<change-name>/specs/` → `openspec/specs/` にマージ
+5. **一時ファイルのクリーンアップ**: 学習抽出（ステップ1-4）が正常に完了した場合に限り、以下のディレクトリを削除する
+   - `openspec/changes/<change-name>/interpretations/`
+   - `openspec/changes/<change-name>/reviews/`
+   - ディレクトリが存在しない場合はスキップする（エラーにしない）
+   - 学習抽出が途中でエラーにより中断した場合はクリーンアップを実行しない（次回の `/compound` 実行で再利用可能にするため）
+
+6. **スペックマージ**: `openspec/changes/<change-name>/specs/` → `openspec/specs/` にマージ
    - ADDED: `openspec/specs/<feature>/spec.md` に追記（なければ新規作成）
    - MODIFIED: 同名要件を置換
    - REMOVED: 該当要件を削除
    - マージ後は ADDED/MODIFIED/REMOVED 接頭辞を除去し累積形式にする
 
-5. **変更アーカイブ**: `openspec/changes/<change-name>/` → `openspec/changes/archive/YYYY-MM-DD-<change-name>/` に移動
+7. **変更アーカイブ**: `openspec/changes/<change-name>/` → `openspec/changes/archive/YYYY-MM-DD-<change-name>/` に移動
 
 ## 複利ドキュメント形式
 

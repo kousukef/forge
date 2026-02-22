@@ -80,9 +80,10 @@ SPEC FILES（自分で Read して実装すること）:
 - openspec/changes/<CHANGE_NAME>/design.md の [該当セクション]
 
 COMPLETION CRITERIA:
+- Spec Interpretation Log が出力済みであること: openspec/changes/<CHANGE_NAME>/interpretations/<task>.md
 - テストがパスすること: npx vitest run [テストファイル]
 - 型チェックがパスすること: npx tsc --noEmit
-- コミット: git add [変更ファイル] && git commit -m "feat(<scope>): <説明>"
+- Spec Interpretation Log の Phase B（実装後の検証結果）が追記済みであること
 ```
 
 #### スキル名決定テーブル
@@ -132,7 +133,7 @@ COMPLETION CRITERIA:
 
 全タスク完了後:
 1. `npx vitest run` + `npx tsc --noEmit` で最終検証
-2. `git log --oneline` でコミット一覧を取得
+2. `git diff --stat` で変更ファイル一覧を取得
 3. 以下の形式で結果を Main Agent に返す:
 
 ```
@@ -142,8 +143,8 @@ COMPLETION CRITERIA:
 - [x] Task 1: [タスク名]
 ...
 
-## コミット一覧
-[git log --oneline の出力]
+## 変更ファイル一覧
+[git diff --stat の出力]
 
 ## テスト結果
 [npx vitest run の出力]
