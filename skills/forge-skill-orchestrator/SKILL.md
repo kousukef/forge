@@ -45,9 +45,7 @@ description: "Use at the START of every task, before writing any code, running t
 | `src/**/*.ts` (上記以外) | typescript-backend |
 | 複数ドメインにまたがる場合 | 該当する全ドメインの Union |
 
-## Skill レジストリ
-
-### Methodology Skills（universal -- 全ドメイン共通）
+## Methodology Skills レジストリ（universal -- 全ドメイン共通）
 
 | Skill 名 | 適用フェーズ | トリガー条件 |
 |---|---|---|
@@ -58,20 +56,9 @@ description: "Use at the START of every task, before writing any code, running t
 | `strategic-compact` | ALL | コンテキストウィンドウ 80% 超過時。フェーズ切り替え時。大量出力処理後 |
 | `dispatching-parallel-agents` | debug, implementation | 3つ以上の独立した失敗・タスクが存在し、並列調査が可能な時 |
 
-### Domain Skills
-
-| Skill 名 | 適用ドメイン | トリガー条件 |
-|---|---|---|
-| `next-best-practices` | nextjs-frontend | `.tsx`/`.jsx` ファイル、`src/app/` 配下の変更時。App Router 規約の確認時 |
-| `vercel-react-best-practices` | nextjs-frontend | React コンポーネントの実装・レビュー・パフォーマンス最適化時 |
-| `vercel-composition-patterns` | nextjs-frontend | コンポーネント設計、compound components、render props の実装時 |
-| `web-design-guidelines` | nextjs-frontend | UI レビュー、アクセシビリティチェック、デザイン監査時 |
-| `prisma-expert` | prisma-database | Prisma スキーマ設計、マイグレーション、クエリ最適化、リレーション設計時 |
-| `playwright-skill` | testing | E2E テスト作成、ブラウザ自動化、Web UI テスト時 |
-| `typescript-backend` | typescript-backend | Route Handlers、Server Actions の変更時（未作成） |
-| `terraform-infrastructure` | terraform-infrastructure | `.tf` ファイルの変更時（未作成） |
-
-> **注**: `typescript-backend` と `terraform-infrastructure` は未作成。将来追加時にこのレジストリに登録することで、自動的にフェーズ+ドメイン判定の対象になる。
+> **Domain Skills について**: Domain Skills は Auto-Discovery 方式に移行済み。
+> プロジェクト固有スキル（`<project>/.claude/skills/`）およびグローバルスキル（`~/.claude/skills/`）に
+> 配置されたドメインスキルは Claude Code が自動検出するため、ここにレジストリとして列挙する必要はない。
 
 ## サブエージェント向け指示
 
@@ -111,9 +98,9 @@ START
   ├─ 2. ドメイン判定
   │     └─ 対象ファイルパス → ドメイン検出テーブル → domains[]
   │
-  ├─ 3. レジストリ照合
-  │     ├─ Methodology Skills: phases[] でフィルタ → matched_methodology[]
-  │     └─ Domain Skills: domains[] でフィルタ → matched_domain[]
+  ├─ 3. スキル照合
+  │     ├─ Methodology Skills: phases[] でレジストリ照合 → matched_methodology[]
+  │     └─ Domain Skills: domains[] から Auto-Discovery（Claude Code が自動検出） → matched_domain[]
   │
   ├─ 4. Union
   │     └─ skills_to_invoke = matched_methodology ∪ matched_domain
@@ -138,7 +125,7 @@ START
 1. フェーズ: `implementation`
 2. ドメイン: `src/app/dashboard/page.tsx` → `nextjs-frontend`
 3. Methodology Skills: `test-driven-development`, `verification-before-completion`, `iterative-retrieval`
-4. Domain Skills: `next-best-practices`, `vercel-react-best-practices`
+4. Domain Skills（Auto-Discovery）: `next-best-practices`, `vercel-react-best-practices` 等
 5. → 5つの Skill を呼び出し
 
 ### 例 2: Prisma スキーマ変更を含むデバッグ時
@@ -146,7 +133,7 @@ START
 1. フェーズ: `debug`
 2. ドメイン: `prisma/schema.prisma` → `prisma-database`
 3. Methodology Skills: `systematic-debugging`, `test-driven-development`, `iterative-retrieval`
-4. Domain Skills: `prisma-expert`
+4. Domain Skills（Auto-Discovery）: `prisma-expert` 等
 5. → 4つの Skill を呼び出し
 
 ### 例 3: 3つ以上の独立したテスト失敗時
@@ -154,5 +141,5 @@ START
 1. フェーズ: `debug`
 2. ドメイン: 各テストファイルから判定
 3. Methodology Skills: `systematic-debugging`, `dispatching-parallel-agents`, `iterative-retrieval`
-4. Domain Skills: 該当ドメイン
+4. Domain Skills（Auto-Discovery）: 該当ドメインのスキルを自動検出
 5. → 並列エージェントで各失敗を独立調査
