@@ -137,6 +137,8 @@ openspec/
 
 グローバルスキル定義は `~/.claude/skills/` を参照。プロジェクト固有スキルは各プロジェクトの `.claude/skills/` を参照:
 
+### Methodology Skills
+
 | Skill                          | Purpose                                                     |
 | ------------------------------ | ----------------------------------------------------------- |
 | forge-skill-orchestrator       | 作業開始時のスキル判定・ルーティング（1%ルール適用）        |
@@ -145,6 +147,25 @@ openspec/
 | verification-before-completion | 完了の証明（実行結果貼付必須、「通るはず」禁止）            |
 | iterative-retrieval            | 段階的コンテキスト取得（Glob→Grep→Read）                    |
 | strategic-compact              | コンテキストウィンドウ管理（80%超過時の手動コンパクション） |
+
+### Domain Skills
+
+| Skill                          | Purpose                                                                              |
+| ------------------------------ | ------------------------------------------------------------------------------------ |
+| next-best-practices            | Next.js 15 App Router ベストプラクティス（ルーティング・SC/CC・データ取得・メタデータ） |
+| vercel-react-best-practices    | React 57ルール/8カテゴリ（パフォーマンス・状態管理・React 19 API）                   |
+| vercel-composition-patterns    | React コンポーネント合成パターン（Compound Components・Container/Presentational）     |
+| web-design-guidelines          | アクセシビリティ・レスポンシブ・Core Web Vitals・UXパターン                          |
+| tailwind-best-practices        | Tailwind CSS v4 + shadcn/ui + Headless UI 統合パターン                               |
+| nextjs-api-patterns            | Route Handlers / Server Actions / Middleware 実装パターン                            |
+| security-patterns              | OWASP Top 10・XSS/CSRF防止・Zod バリデーション・シークレット管理                     |
+| prisma-expert                  | Prisma スキーマ設計・クエリ最適化・N+1防止・インデックス戦略                         |
+| database-migrations            | Zero-downtime Expand-Contract マイグレーション・Prisma Migrate                       |
+| webapp-testing                 | Playwright E2E テスト（Reconnaissance-then-Action・POM・Auto-waiting）               |
+| vitest-testing-patterns        | Vitest 3.x + React Testing Library（RTLクエリ優先順位・vi.mock/vi.hoisted）          |
+| terraform-gcp-expert           | Terraform + GCP リソース設計（Cloud Run/SQL/Storage・IAM・モジュール化）              |
+| architecture-patterns          | SOLID・DDD・ADR・モジュール境界・レイヤードアーキテクチャ                            |
+| ui-ux-pro-max-skill            | カラーパレット・フォントペアリング・UXガイドライン・デザインシステム                 |
 
 > プロジェクトの `.claude/skills/` に配置されたスキルも Claude Code が自動検出し、上記と同様に利用可能になる。
 
@@ -184,15 +205,25 @@ openspec/
 
 **禁止**: Main Agent が SKILL.md の内容を Read してプロンプトにインライン展開すること
 
-#### スキル名決定テーブル
+#### ガイダンステーブル（推奨マッピング）
+
+Domain Skills は Auto-Discovery により自動起動されるが、サブエージェント委譲時は以下の推奨マッピングを参照してスキル名を明示指定する。テーブルに記載のないスキルも Auto-Discovery で起動可能。
 
 | ドメイン判定 | 適用スキル名 |
 |---|---|
 | `.ts` / `.tsx` 全般 | `test-driven-development`, `verification-before-completion`, `iterative-retrieval` |
-| Next.js（`src/app/`） | 上記 + `next-best-practices` |
-| Prisma（`prisma/`, `server/`） | 上記 + `prisma-expert` |
+| Next.js（`src/app/`） | 上記 + `next-best-practices`, `vercel-react-best-practices` |
+| React コンポーネント設計 | 上記 + `vercel-composition-patterns` |
+| Prisma（`prisma/`, `server/`） | 基本 + `prisma-expert` |
+| DB マイグレーション（`prisma/migrations/`） | 基本 + `database-migrations` |
+| Terraform（`terraform/`） | 基本 + `terraform-gcp-expert` |
+| E2E テスト（`e2e/`, `*.spec.ts`） | `webapp-testing` |
+| ユニットテスト（`*.test.ts`, `*.test.tsx`） | `vitest-testing-patterns`, `test-driven-development` |
+| フロントエンド UI | 基本 + `web-design-guidelines`, `tailwind-best-practices` |
+| API（`src/app/api/`, `src/actions/`） | 基本 + `nextjs-api-patterns` |
+| セキュリティ関連 | `security-patterns` |
+| アーキテクチャ設計 | `architecture-patterns` |
 | デバッグ / エラー修正 | `systematic-debugging`, `iterative-retrieval` |
-| フロントエンド UI | 上記 + `frontend-design` |
 
 ---
 

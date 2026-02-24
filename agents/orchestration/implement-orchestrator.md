@@ -86,15 +86,25 @@ COMPLETION CRITERIA:
 - Spec Interpretation Log の Phase B（実装後の検証結果）が追記済みであること
 ```
 
-#### スキル名決定テーブル
+#### ガイダンステーブル（推奨マッピング）
+
+Domain Skills は Auto-Discovery により自動起動されるが、サブエージェント委譲時は以下の推奨マッピングを参照してスキル名を明示指定する。テーブルに記載のないスキルも Auto-Discovery で起動可能。
 
 | ドメイン判定 | 適用スキル名 |
 |---|---|
 | `.ts` / `.tsx` 全般 | `test-driven-development`, `verification-before-completion`, `iterative-retrieval` |
-| Next.js（`src/app/`） | 上記 + `next-best-practices` |
-| Prisma（`prisma/`, `server/`） | 上記 + `prisma-expert` |
+| Next.js（`src/app/`） | 上記 + `next-best-practices`, `vercel-react-best-practices` |
+| React コンポーネント設計 | 上記 + `vercel-composition-patterns` |
+| Prisma（`prisma/`, `server/`） | 基本 + `prisma-expert` |
+| DB マイグレーション（`prisma/migrations/`） | 基本 + `database-migrations` |
+| Terraform（`terraform/`） | 基本 + `terraform-gcp-expert` |
+| E2E テスト（`e2e/`, `*.spec.ts`） | `webapp-testing` |
+| ユニットテスト（`*.test.ts`, `*.test.tsx`） | `vitest-testing-patterns`, `test-driven-development` |
+| フロントエンド UI | 基本 + `web-design-guidelines`, `tailwind-best-practices` |
+| API（`src/app/api/`, `src/actions/`） | 基本 + `nextjs-api-patterns` |
+| セキュリティ関連 | `security-patterns` |
+| アーキテクチャ設計 | `architecture-patterns` |
 | デバッグ / エラー修正 | `systematic-debugging`, `iterative-retrieval` |
-| フロントエンド UI | 上記 + `frontend-design` |
 
 > スキルはパスではなく名前で指定する。Claude Code がグローバル（`~/.claude/skills/`）とプロジェクト（`<project>/.claude/skills/`）の両方から自動解決する。
 
