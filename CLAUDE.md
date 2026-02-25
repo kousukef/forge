@@ -165,7 +165,7 @@ openspec/
 | vitest-testing-patterns        | Vitest 3.x + React Testing Library（RTLクエリ優先順位・vi.mock/vi.hoisted）          |
 | terraform-gcp-expert           | Terraform + GCP リソース設計（Cloud Run/SQL/Storage・IAM・モジュール化）              |
 | architecture-patterns          | SOLID・DDD・ADR・モジュール境界・レイヤードアーキテクチャ                            |
-| ui-ux-pro-max                  | カラーパレット・フォントペアリング・UXガイドライン・デザインシステム                 |
+| ui-ux-pro-max-skill            | カラーパレット・フォントペアリング・UXガイドライン・デザインシステム                 |
 
 > プロジェクトの `.claude/skills/` に配置されたスキルも Claude Code が自動検出し、上記と同様に利用可能になる。
 

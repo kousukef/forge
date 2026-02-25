@@ -123,18 +123,18 @@ implement-orchestrator のガイダンステーブル（推奨マッピング）
 - **WHEN** テーブルを検証する
 - **THEN** 全ドメインのマッピング（.ts/.tsx、Next.js、Prisma、Terraform、E2E テスト、フロントエンド UI、API、セキュリティ、DB マイグレーション）を含む
 
-### Requirement: ui-ux-pro-max の MCP 統合（REQ-007）
+### Requirement: ui-ux-pro-max-skill の MCP 統合（REQ-007）
 
-ui-ux-pro-max を SKILL.md + MCP プラグインの両方で統合しなければならない (SHALL)。
+ui-ux-pro-max-skill を SKILL.md + MCP プラグインの両方で統合しなければならない (SHALL)。
 
 #### Scenario: 正常統合
-- **GIVEN** ui-ux-pro-max を統合する
+- **GIVEN** ui-ux-pro-max-skill を統合する
 - **WHEN** SKILL.md を作成する
 - **THEN** UX ガイドライン・デザイン原則を SKILL.md に記載し、MCP プラグインの利用方法も記載する
 
 #### Scenario: MCP 不可時のフォールバック
 - **GIVEN** MCP プラグインが利用不可
-- **WHEN** ui-ux-pro-max を使用する
+- **WHEN** ui-ux-pro-max-skill を使用する
 - **THEN** SKILL.md のルール・ガイドラインのみで動作する
 
 #### Non-Functional Requirements
@@ -144,7 +144,7 @@ ui-ux-pro-max を SKILL.md + MCP プラグインの両方で統合しなけれ�
 
 各 Domain Skill の SKILL.md は対象技術ドメインのベストプラクティスを含まなければならない (SHALL)。
 
-対象スキル: next-best-practices, vercel-react-best-practices, vercel-composition-patterns, web-design-guidelines, tailwind-best-practices, nextjs-api-patterns, security-patterns, prisma-expert, database-migrations, webapp-testing, vitest-testing-patterns, terraform-gcp-expert, architecture-patterns, ui-ux-pro-max
+対象スキル: next-best-practices, vercel-react-best-practices, vercel-composition-patterns, web-design-guidelines, tailwind-best-practices, nextjs-api-patterns, security-patterns, prisma-expert, database-migrations, webapp-testing, vitest-testing-patterns, terraform-gcp-expert, architecture-patterns, ui-ux-pro-max-skill
 
 ### Requirement: 最終検証（REQ-009）
 

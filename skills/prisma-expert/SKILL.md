@@ -1,360 +1,500 @@
 ---
 name: prisma-expert
-description: "Prisma ORM expert for schema design, migrations, query optimization, relations modeling, and database operations. Use PROACTIVELY for Prisma schema issues, migration problems, query performance, re..."
-risk: unknown
-source: community
+description: "When working with Prisma schema files (.prisma), database queries, migrations, or relation design in prisma/ or server/ directories. Provides best practices for schema design, query optimization, N+1 prevention, index strategy, transaction patterns, and migration safety using Prisma ORM API only. MUST be invoked before creating or modifying Prisma schemas, writing database queries, or planning migrations."
 ---
 
 # Prisma Expert
 
-You are an expert in Prisma ORM with deep knowledge of schema design, migrations, query optimization, relations modeling, and database operations across PostgreSQL, MySQL, and SQLite.
+## 原則
 
-## When Invoked
+Prisma ORM を通じたデータベース操作において、型安全性・パフォーマンス・マイグレーション安全性を最大化する。
+生 SQL（`$queryRaw`/`$executeRaw`）は原則禁止。Prisma Client API のみで表現する。
 
-### Step 0: Recommend Specialist and Stop
-If the issue is specifically about:
-- **Raw SQL optimization**: Stop and recommend postgres-expert or mongodb-expert
-- **Database server configuration**: Stop and recommend database-expert
-- **Connection pooling at infrastructure level**: Stop and recommend devops-expert
+---
 
-### Environment Detection
-```bash
-# Check Prisma version
-npx prisma --version 2>/dev/null || echo "Prisma not installed"
+## 1. スキーマ設計
 
-# Check database provider
-grep "provider" prisma/schema.prisma 2>/dev/null | head -1
+### 命名規約
 
-# Check for existing migrations
-ls -la prisma/migrations/ 2>/dev/null | head -5
+- モデル名: PascalCase 単数形（`User`, `Post`, `OrderItem`）
+- フィールド名: camelCase（`createdAt`, `userId`, `orderStatus`）
+- リレーション名: 意味のある名前（`author`, `posts`, `parentComment`）
+- Enum 名: PascalCase、値は UPPER_SNAKE_CASE
+- `@@map` でテーブル名を snake_case 化、`@map` でカラム名を snake_case 化
 
-# Check Prisma Client generation status
-ls -la node_modules/.prisma/client/ 2>/dev/null | head -3
-```
-
-### Apply Strategy
-1. Identify the Prisma-specific issue category
-2. Check for common anti-patterns in schema or queries
-3. Apply progressive fixes (minimal → better → complete)
-4. Validate with Prisma CLI and testing
-
-## Problem Playbooks
-
-### Schema Design
-**Common Issues:**
-- Incorrect relation definitions causing runtime errors
-- Missing indexes for frequently queried fields
-- Enum synchronization issues between schema and database
-- Field type mismatches
-
-**Diagnosis:**
-```bash
-# Validate schema
-npx prisma validate
-
-# Check for schema drift
-npx prisma migrate diff --from-schema-datamodel prisma/schema.prisma --to-schema-datasource prisma/schema.prisma
-
-# Format schema
-npx prisma format
-```
-
-**Prioritized Fixes:**
-1. **Minimal**: Fix relation annotations, add missing `@relation` directives
-2. **Better**: Add proper indexes with `@@index`, optimize field types
-3. **Complete**: Restructure schema with proper normalization, add composite keys
-
-**Best Practices:**
 ```prisma
-// Good: Explicit relations with clear naming
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  orderId   Int      @map("order_id")
+  productId Int      @map("product_id")
+  quantity  Int
+  unitPrice Decimal  @map("unit_price") @db.Decimal(10, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+```
+
+### 主キー戦略
+
+- 単一 DB: `Int @id @default(autoincrement())` または `BigInt` が基本
+- 外部公開 ID: `String @id @default(cuid())` または `@default(uuid())`
+- ランダム UUID v4 は大規模テーブルでインデックス断片化を起こすため避ける
+- CUID2 が順序性とユニーク性のバランスが良い
+
+### Enum の活用
+
+```prisma
+enum OrderStatus {
+  PENDING    @map("pending")
+  PROCESSING @map("processing")
+  COMPLETED  @map("completed")
+  CANCELLED  @map("cancelled")
+  @@map("order_status")
+}
+```
+
+- Enum 値は `@map` で snake_case 化、Enum 自体も `@@map` でテーブル名を設定
+- `@default(USER)` のようにデフォルト値を明示する
+
+### データ型の選択
+
+| 用途 | Prisma 型 | 注意事項 |
+|---|---|---|
+| ID（内部） | `Int` / `BigInt` | 21億超の可能性があれば `BigInt` |
+| ID（外部公開） | `String` + `@default(cuid())` | UUID v4 より CUID を推奨 |
+| 文字列 | `String` | `@db.VarChar(n)` は制約が必要な場合のみ |
+| 日時 | `DateTime` | 常に `@db.Timestamptz` を検討 |
+| 金額 | `Decimal` + `@db.Decimal(10, 2)` | `Float` は精度が失われるため禁止 |
+| 真偽値 | `Boolean` | `@default(false)` を明示 |
+| JSON | `Json` | 構造化データには専用モデルを優先 |
+
+### リレーション設計
+
+#### 1対多
+
+```prisma
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  posts     Post[]   @relation("UserPosts")
-  profile   Profile? @relation("UserProfile")
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  @@index([email])
-  @@map("users")
+  id    Int    @id @default(autoincrement())
+  posts Post[]
 }
 
 model Post {
-  id       String @id @default(cuid())
-  title    String
-  author   User   @relation("UserPosts", fields: [authorId], references: [id], onDelete: Cascade)
-  authorId String
-  
+  id       Int  @id @default(autoincrement())
+  authorId Int  @map("author_id")
+  author   User @relation(fields: [authorId], references: [id])
+
   @@index([authorId])
   @@map("posts")
 }
 ```
 
-**Resources:**
-- https://www.prisma.io/docs/concepts/components/prisma-schema
-- https://www.prisma.io/docs/concepts/components/prisma-schema/relations
+#### 多対多（明示的中間テーブル推奨）
 
-### Migrations
-**Common Issues:**
-- Migration conflicts in team environments
-- Failed migrations leaving database in inconsistent state
-- Shadow database issues during development
-- Production deployment migration failures
+暗黙的多対多（`@relation` のみ）は中間テーブルにフィールド追加不可。明示的中間テーブルを使用する。
 
-**Diagnosis:**
-```bash
-# Check migration status
-npx prisma migrate status
+```prisma
+model PostTag {
+  postId    Int      @map("post_id")
+  tagId     Int      @map("tag_id")
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")  // 追加フィールド可能
 
-# View pending migrations
-ls -la prisma/migrations/
-
-# Check migration history table
-# (use database-specific command)
+  @@id([postId, tagId])
+  @@index([tagId])
+  @@map("post_tags")
+}
 ```
 
-**Prioritized Fixes:**
-1. **Minimal**: Reset development database with `prisma migrate reset`
-2. **Better**: Manually fix migration SQL, use `prisma migrate resolve`
-3. **Complete**: Squash migrations, create baseline for fresh setup
+#### 自己参照リレーション
 
-**Safe Migration Workflow:**
-```bash
-# Development
-npx prisma migrate dev --name descriptive_name
-
-# Production (never use migrate dev!)
-npx prisma migrate deploy
-
-# If migration fails in production
-npx prisma migrate resolve --applied "migration_name"
-# or
-npx prisma migrate resolve --rolled-back "migration_name"
+```prisma
+model Comment {
+  id       Int       @id @default(autoincrement())
+  parentId Int?      @map("parent_id")
+  parent   Comment?  @relation("CommentTree", fields: [parentId], references: [id])
+  children Comment[] @relation("CommentTree")
+  @@index([parentId])
+}
 ```
 
-**Resources:**
-- https://www.prisma.io/docs/concepts/components/prisma-migrate
-- https://www.prisma.io/docs/guides/deployment/deploy-database-changes
+### カスケード設定
 
-### Query Optimization
-**Common Issues:**
-- N+1 query problems with relations
-- Over-fetching data with excessive includes
-- Missing select for large models
-- Slow queries without proper indexing
+| シナリオ | onDelete | 理由 |
+|---|---|---|
+| 親削除で子も不要 | `Cascade` | ユーザー削除時のセッション等 |
+| 親削除を防ぎたい | `Restrict` | 注文がある顧客の削除防止 |
+| 子のFKをnullに | `SetNull` | 著者削除時に投稿を匿名化 |
+| デフォルト推奨 | `Restrict` | データ損失を防ぐ安全側の選択 |
 
-**Diagnosis:**
-```bash
-# Enable query logging
-# In schema.prisma or client initialization:
-# log: ['query', 'info', 'warn', 'error']
-```
+---
+
+## 2. クエリ最適化
+
+### select によるフィールド選択
 
 ```typescript
-// Enable query events
-const prisma = new PrismaClient({
-  log: [
-    { emit: 'event', level: 'query' },
-  ],
-});
+// BAD: 全フィールド取得
+const users = await prisma.user.findMany();
 
-prisma.$on('query', (e) => {
-  console.log('Query: ' + e.query);
-  console.log('Duration: ' + e.duration + 'ms');
+// GOOD: 必要なフィールドのみ
+const users = await prisma.user.findMany({
+  select: {
+    id: true,
+    name: true,
+    email: true,
+  },
 });
 ```
 
-**Prioritized Fixes:**
-1. **Minimal**: Add includes for related data to avoid N+1
-2. **Better**: Use select to fetch only needed fields
-3. **Complete**: Use raw queries for complex aggregations, implement caching
+### N+1 クエリの防止
 
-**Optimized Query Patterns:**
 ```typescript
-// BAD: N+1 problem
+// BAD: N+1（ループ内で個別クエリ）
 const users = await prisma.user.findMany();
 for (const user of users) {
   const posts = await prisma.post.findMany({ where: { authorId: user.id } });
 }
 
-// GOOD: Include relations
-const users = await prisma.user.findMany({
-  include: { posts: true }
+// GOOD: include で一括取得（2クエリ）
+const usersWithPosts = await prisma.user.findMany({ include: { posts: true } });
+
+// GOOD: in フィルタで一括取得（2クエリ）
+const users = await prisma.user.findMany();
+const posts = await prisma.post.findMany({
+  where: { authorId: { in: users.map((u) => u.id) } },
 });
 
-// BETTER: Select only needed fields
-const users = await prisma.user.findMany({
-  select: {
-    id: true,
-    email: true,
-    posts: {
-      select: { id: true, title: true }
-    }
-  }
+// BEST: relationLoadStrategy: "join" で1クエリ
+const usersWithPosts = await prisma.user.findMany({
+  relationLoadStrategy: "join",
+  include: { posts: true },
 });
-
-// BEST for complex queries: Use $queryRaw
-const result = await prisma.$queryRaw`
-  SELECT u.id, u.email, COUNT(p.id) as post_count
-  FROM users u
-  LEFT JOIN posts p ON p.author_id = u.id
-  GROUP BY u.id
-`;
 ```
 
-**Resources:**
-- https://www.prisma.io/docs/guides/performance-and-optimization
-- https://www.prisma.io/docs/concepts/components/prisma-client/raw-database-access
+### include と select の組み合わせ
 
-### Connection Management
-**Common Issues:**
-- Connection pool exhaustion
-- "Too many connections" errors
-- Connection leaks in serverless environments
-- Slow initial connections
+リレーション先も `select` で必要フィールドのみに絞る。
 
-**Diagnosis:**
-```bash
-# Check current connections (PostgreSQL)
-psql -c "SELECT count(*) FROM pg_stat_activity WHERE datname = 'your_db';"
-```
-
-**Prioritized Fixes:**
-1. **Minimal**: Configure connection limit in DATABASE_URL
-2. **Better**: Implement proper connection lifecycle management
-3. **Complete**: Use connection pooler (PgBouncer) for high-traffic apps
-
-**Connection Configuration:**
 ```typescript
-// For serverless (Vercel, AWS Lambda)
-import { PrismaClient } from '@prisma/client';
-
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
-
-export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query'] : [],
-  });
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
-
-// Graceful shutdown
-process.on('beforeExit', async () => {
-  await prisma.$disconnect();
+const posts = await prisma.post.findMany({
+  select: { id: true, title: true, author: { select: { id: true, name: true } } },
 });
 ```
 
-```env
-# Connection URL with pool settings
-DATABASE_URL="postgresql://user:pass@host:5432/db?connection_limit=5&pool_timeout=10"
+### findMany には必ず take を設定
+
+```typescript
+// BAD: 上限なし
+const posts = await prisma.post.findMany({
+  where: { published: true },
+});
+
+// GOOD: 上限を明示
+const posts = await prisma.post.findMany({
+  where: { published: true },
+  take: 50,
+  orderBy: { createdAt: "desc" },
+});
 ```
 
-**Resources:**
-- https://www.prisma.io/docs/guides/performance-and-optimization/connection-management
-- https://www.prisma.io/docs/guides/deployment/deployment-guides/deploying-to-vercel
+### カーソルベースページネーション
 
-### Transaction Patterns
-**Common Issues:**
-- Inconsistent data from non-atomic operations
-- Deadlocks in concurrent transactions
-- Long-running transactions blocking reads
-- Nested transaction confusion
-
-**Diagnosis:**
 ```typescript
-// Check for transaction issues
-try {
-  const result = await prisma.$transaction([...]);
-} catch (e) {
-  if (e.code === 'P2034') {
-    console.log('Transaction conflict detected');
-  }
+// BAD: OFFSET ベース（深いページで遅い）
+const posts = await prisma.post.findMany({
+  skip: 1000,
+  take: 20,
+});
+
+// GOOD: カーソルベース（常に O(1)）
+const posts = await prisma.post.findMany({
+  take: 20,
+  skip: 1,
+  cursor: { id: lastPostId },
+  orderBy: { id: "asc" },
+});
+```
+
+### 一括操作
+
+```typescript
+// BAD: ループ内で個別作成
+for (const data of items) {
+  await prisma.item.create({ data });
+}
+
+// GOOD: createMany で一括作成
+await prisma.item.createMany({
+  data: items,
+  skipDuplicates: true,
+});
+
+// GOOD: updateMany / deleteMany
+await prisma.post.updateMany({
+  where: { published: false, createdAt: { lt: cutoffDate } },
+  data: { archived: true },
+});
+```
+
+### upsert パターン
+
+`findFirst` + `create`/`update` はレースコンディションの原因。`upsert` を使用する。
+
+```typescript
+await prisma.setting.upsert({
+  where: { userId_key: { userId, key: "theme" } },
+  update: { value },
+  create: { userId, key: "theme", value },
+});
+```
+
+---
+
+## 3. インデックス戦略
+
+### 外部キーには必ずインデックス
+
+PostgreSQL は外部キーカラムに自動でインデックスを作成しない。
+Prisma スキーマで全ての外部キーフィールドに `@@index` を設定する。
+
+```prisma
+model Post {
+  id       Int @id @default(autoincrement())
+  authorId Int @map("author_id")
+  author   User @relation(fields: [authorId], references: [id])
+
+  @@index([authorId])  // 必須: JOIN と CASCADE が高速化
 }
 ```
 
-**Transaction Patterns:**
+### 複合インデックスの順序
+
+等値条件のカラムを先、範囲条件のカラムを後に配置する。
+
+```prisma
+model Order {
+  id        Int         @id @default(autoincrement())
+  status    OrderStatus
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  // GOOD: status（等値）を先、createdAt（範囲）を後に
+  @@index([status, createdAt])
+  @@map("orders")
+}
+```
+
 ```typescript
-// Sequential operations (auto-transaction)
-const [user, profile] = await prisma.$transaction([
-  prisma.user.create({ data: userData }),
-  prisma.profile.create({ data: profileData }),
-]);
-
-// Interactive transaction with manual control
-const result = await prisma.$transaction(async (tx) => {
-  const user = await tx.user.create({ data: userData });
-  
-  // Business logic validation
-  if (user.email.endsWith('@blocked.com')) {
-    throw new Error('Email domain blocked');
-  }
-  
-  const profile = await tx.profile.create({
-    data: { ...profileData, userId: user.id }
-  });
-  
-  return { user, profile };
-}, {
-  maxWait: 5000,  // Wait for transaction slot
-  timeout: 10000, // Transaction timeout
-  isolationLevel: 'Serializable', // Strictest isolation
-});
-
-// Optimistic concurrency control
-const updateWithVersion = await prisma.post.update({
-  where: { 
-    id: postId,
-    version: currentVersion  // Only update if version matches
+// このクエリが高速化される
+const pendingOrders = await prisma.order.findMany({
+  where: {
+    status: "PENDING",
+    createdAt: { gt: new Date("2024-01-01") },
   },
-  data: {
-    content: newContent,
-    version: { increment: 1 }
-  }
 });
 ```
 
-**Resources:**
-- https://www.prisma.io/docs/concepts/components/prisma-client/transactions
+### ユニーク制約の活用
 
-## Code Review Checklist
+```prisma
+model User {
+  id    Int    @id @default(autoincrement())
+  email String @unique
 
-### Schema Quality
-- [ ] All models have appropriate `@id` and primary keys
-- [ ] Relations use explicit `@relation` with `fields` and `references`
-- [ ] Cascade behaviors defined (`onDelete`, `onUpdate`)
-- [ ] Indexes added for frequently queried fields
-- [ ] Enums used for fixed value sets
-- [ ] `@@map` used for table naming conventions
+  @@map("users")
+}
 
-### Query Patterns
-- [ ] No N+1 queries (relations included when needed)
-- [ ] `select` used to fetch only required fields
-- [ ] Pagination implemented for list queries
-- [ ] Raw queries used for complex aggregations
-- [ ] Proper error handling for database operations
+model Setting {
+  id     Int    @id @default(autoincrement())
+  userId Int    @map("user_id")
+  key    String
 
-### Performance
-- [ ] Connection pooling configured appropriately
-- [ ] Indexes exist for WHERE clause fields
-- [ ] Composite indexes for multi-column queries
-- [ ] Query logging enabled in development
-- [ ] Slow queries identified and optimized
+  @@unique([userId, key])  // 複合ユニーク制約（upsert の where で使用可能）
+  @@map("settings")
+}
+```
 
-### Migration Safety
-- [ ] Migrations tested before production deployment
-- [ ] Backward-compatible schema changes (no data loss)
-- [ ] Migration scripts reviewed for correctness
-- [ ] Rollback strategy documented
+### 部分インデックス
 
-## Anti-Patterns to Avoid
+Prisma は `@@index` に `where` 句を直接サポートしていない。
+ソフトデリート等で部分インデックスが必要な場合、`--create-only` でマイグレーションを生成し、SQL ファイルに手動で追記する。
 
-1. **Implicit Many-to-Many Overhead**: Always use explicit join tables for complex relationships
-2. **Over-Including**: Don't include relations you don't need
-3. **Ignoring Connection Limits**: Always configure pool size for your environment
-4. **Raw Query Abuse**: Use Prisma queries when possible, raw only for complex cases
-5. **Migration in Production Dev Mode**: Never use `migrate dev` in production
+---
 
-## When to Use
-This skill is applicable to execute the workflow or actions described in the overview.
+## 4. トランザクションパターン
+
+### 順次トランザクション（独立した操作の一括実行）
+
+```typescript
+// 結果が互いに依存しない操作に使用
+const [posts, totalCount] = await prisma.$transaction([
+  prisma.post.findMany({ where: { published: true }, take: 10 }),
+  prisma.post.count({ where: { published: true } }),
+]);
+```
+
+### インタラクティブトランザクション（依存する操作）
+
+```typescript
+// 前の操作の結果を次の操作で使う場合
+const result = await prisma.$transaction(async (tx) => {
+  const user = await tx.user.create({
+    data: { email: "alice@example.com", name: "Alice" },
+  });
+
+  const post = await tx.post.create({
+    data: { title: "First Post", authorId: user.id },
+  });
+
+  return { user, post };
+});
+```
+
+### トランザクション設計の原則
+
+| ルール | 説明 |
+|---|---|
+| トランザクションは短く | 外部 API 呼び出しをトランザクション内に含めない |
+| タイムアウト設定 | `maxWait` と `timeout` を明示的に設定 |
+| リトライロジック | P2034（書き込み競合）エラー時にリトライ |
+| 分離レベル | デフォルト（Read Committed）で十分な場合が多い |
+
+```typescript
+// タイムアウト付きトランザクション
+const result = await prisma.$transaction(
+  async (tx) => {
+    // 短い操作のみ
+    await tx.account.update({
+      where: { id: fromId },
+      data: { balance: { decrement: amount } },
+    });
+    await tx.account.update({
+      where: { id: toId },
+      data: { balance: { increment: amount } },
+    });
+  },
+  {
+    maxWait: 5000,
+    timeout: 10000,
+  },
+);
+```
+
+### デッドロック防止
+
+- 複数レコードをロックする場合、常に同じ順序（ID昇順等）でアクセスする
+
+---
+
+## 5. Prisma Client シングルトンパターン
+
+開発環境でのホットリロードによるコネクション枯渇を防止する。
+
+```typescript
+// lib/prisma.ts
+import { PrismaClient } from "@prisma/client";
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
+
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["query", "error", "warn"]
+        : ["error"],
+  });
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+}
+```
+
+### コネクションプール設定
+
+```
+# .env
+DATABASE_URL="postgresql://user:pass@host:5432/db?connection_limit=10&pool_timeout=10"
+```
+
+- `connection_limit`: サーバーレス環境では低め（5-10）、サーバー環境では高め（10-20）
+- `pool_timeout`: コネクション取得のタイムアウト（秒）
+
+---
+
+## 6. マイグレーションベストプラクティス
+
+### 基本原則
+
+- マイグレーションファーストで変更（スキーマ変更 → Prisma Client 再生成 → コード変更）
+- 生成されたクライアントを直接編集しない
+- `prisma migrate dev` で開発、`prisma migrate deploy` で本番
+
+### 破壊的変更の段階的実行（Expand/Contract パターン）
+
+1. 新カラム追加 + データコピー（既存カラムは残す）
+2. アプリケーションコードを新カラムに切り替え
+3. 旧カラムを削除するマイグレーション
+
+### マイグレーション安全性チェックリスト
+
+| チェック項目 | 対策 |
+|---|---|
+| カラム削除 | まずコードから参照を除去 → 次のリリースで削除 |
+| 型変更 | データ互換性を確認（String → Int は既存データが壊れる） |
+| NOT NULL 追加 | 既存データに default 値を設定してから制約追加 |
+| テーブル名変更 | Expand/Contract パターンで段階的に |
+
+### カスタムマイグレーション
+
+`npx prisma migrate dev --create-only` で SQL ファイルを生成し、必要に応じて手動編集してから `npx prisma migrate dev` で適用する。
+
+---
+
+## 7. シーディングとテストデータ
+
+### ファクトリ関数パターン
+
+```typescript
+// prisma/factories.ts
+import { Prisma } from "@prisma/client";
+
+export function buildUser(
+  overrides: Partial<Prisma.UserCreateInput> = {},
+): Prisma.UserCreateInput {
+  return { email: `user-${Date.now()}@example.com`, name: "Test User", ...overrides };
+}
+```
+
+- `overrides` パターンでテストごとにフィールドをカスタマイズ可能にする
+
+---
+
+## アンチパターン
+
+| パターン | 問題 | 対策 |
+|---|---|---|
+| `$queryRaw` の多用 | 型安全性の喪失、SQL インジェクションリスク | Prisma Client API で表現する |
+| ループ内の個別クエリ | N+1 問題 | `include`/`in` フィルタ/`createMany` |
+| `findMany` に `take` なし | 大量データ取得でメモリ逼迫 | 必ず `take` で上限設定 |
+| OFFSET ページネーション | 深いページで線形に遅くなる | カーソルベースページネーション |
+| 外部キーにインデックスなし | JOIN と CASCADE が遅い | `@@index` を必ず設定 |
+| トランザクション内で外部 API | ロック保持時間が長くなる | API 呼び出しはトランザクション外 |
+| `Float` で金額を扱う | 浮動小数点の丸め誤差 | `Decimal` を使用 |
+| 暗黙的多対多リレーション | 中間テーブルにフィールド追加不可 | 明示的中間テーブルを使用 |
+| 全フィールド取得 | 不要データの転送・メモリ消費 | `select` で必要なフィールドのみ |
+| `findFirst` + `create`/`update` | レースコンディション | `upsert` を使用 |
+
+---
+
+## Applicability
+
+- **フェーズ**: implementation, review, debug
+- **ドメイン**: prisma-database
+- **トリガーファイル**: `prisma/schema.prisma`, `prisma/migrations/`, `lib/prisma.ts`, `server/` 配下の DB アクセスコード

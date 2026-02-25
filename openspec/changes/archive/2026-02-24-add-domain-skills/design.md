@@ -26,7 +26,7 @@ Forge システムに14の Domain Skills を追加する。各スキルは `~/.c
 | anthropics/skills (73K+) | webapp-testing の Reconnaissance-then-Action パターン | パターンをTypeScript/Playwright向けに記述。Python スクリプトは除外 |
 | supabase/agent-skills (不明) | PostgreSQL 29ルール/8カテゴリ | 17+ ルールが Prisma API に翻訳可能。RLS 等 Supabase 固有は除外 |
 | hashicorp/agent-skills (359) | Terraform Style Guide（約300行） | GCP リソース例に翻訳して適用。AWS 例は読み替え |
-| nextlevelbuilder/ui-ux-pro-max (33K+) | 99 UXガイドライン、50+ スタイル、97カラーパレット | SKILL.md にルール記載 + MCP プラグインで検索機能を併用 |
+| nextlevelbuilder/ui-ux-pro-max-skill (33K+) | 99 UXガイドライン、50+ スタイル、97カラーパレット | SKILL.md にルール記載 + MCP プラグインで検索機能を併用 |
 | affaan-m/everything-claude-code (49K+) | api-design, database-migrations, security-review, e2e-testing | Forge スタック向けにフィルタリング・翻訳して取り込み |
 
 #### 最新のベストプラクティス
@@ -38,7 +38,7 @@ Forge システムに14の Domain Skills を追加する。各スキルは `~/.c
 #### 既知の落とし穴
 
 - `web-design-guidelines` は外部URL依存（vercel-labs 実装）→ ローカルファイルに取り込む
-- `ui-ux-pro-max` は Python 依存 → MCP プラグインとして導入、SKILL.md はルールのみ
+- `ui-ux-pro-max-skill` は Python 依存 → MCP プラグインとして導入、SKILL.md はルールのみ
 - `webapp-testing` は Python スクリプト依存 → パターンの記述のみ、スクリプトは除外
 
 ### コードベース分析（既存スペックとの関連含む）
@@ -137,14 +137,14 @@ forge-skill-orchestrator（ドメイン検出 → Methodology スキル解決）
 | `vitest-testing-patterns` | Vitest 3.x 公式 | RTL 公式 | Jest → Vitest 翻訳 |
 | `terraform-gcp-expert` | Forge reference | hashicorp/agent-skills | AWS → GCP 翻訳 |
 | `architecture-patterns` | SOLID/DDD 文献 | coding-standards reference | 新規作成 |
-| `ui-ux-pro-max` | nextlevelbuilder | MCP プラグイン | ルール + MCP 併用 |
+| `ui-ux-pro-max-skill` | nextlevelbuilder | MCP プラグイン | ルール + MCP 併用 |
 
 ## リスクと注意点
 
 1. **同期漏れリスク**: CLAUDE.md のグローバル/プロジェクト同期を最終検証で必ず確認（過去2回の事例）
 2. **オーケストレーターの名称変更**: `playwright-skill` → `webapp-testing` 等の置換後に横断 Grep で残存チェック
 3. **コンテキストサイズ**: 14スキル全てが同時に注入されることはない（ドメイン判定で絞り込まれる）。ただし frontmatter の description は常時ロードされるため、14スキル分の description トークン増加（約1400 tokens）がある
-4. **ui-ux-pro-max の Python 依存**: MCP プラグインのセットアップに Python 環境が必要。SKILL.md のみでも基本機能は動作する設計にする
+4. **ui-ux-pro-max-skill の Python 依存**: MCP プラグインのセットアップに Python 環境が必要。SKILL.md のみでも基本機能は動作する設計にする
 5. **外部リポジトリのライセンス**: vercel-labs (MIT), anthropics (Apache 2.0), supabase (Apache 2.0), hashicorp (MPL 2.0) -- いずれもオープンソース。ルールの再構成・翻訳は許容されるが、そのままのコピーは避ける
 6. **Auto-Discovery 起動不安定性**: GitHub Discussions #182117 で報告されているように、description の品質次第で起動率が変動する。対策: (a) description を3部構成トリガー条件形式で統一し起動率を最大化、(b) サブエージェント委譲時はガイダンステーブルで明示指定しフォールバック
 7. **Description 品質が起動率に直結**: Auto-Discovery では description が唯一のトリガーとなるため、曖昧な description は起動されないリスクがある。condition にファイルパスパターン（`src/app/`, `prisma/` 等）と作業内容を必ず含める
