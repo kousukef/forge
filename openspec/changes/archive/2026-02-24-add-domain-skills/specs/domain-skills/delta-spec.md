@@ -125,19 +125,19 @@
 
 - **GIVEN** ガイダンステーブルにスキルが記載されているが SKILL.md が存在しない **WHEN** implement-orchestrator がスキルを注入する **THEN** Claude Code がスキル不在のエラーを返す
 
-### Requirement: REQ-007 ui-ux-pro-max-skill の MCP 統合
+### Requirement: REQ-007 ui-ux-pro-max の MCP 統合
 
-`ui-ux-pro-max-skill` を SKILL.md + MCP プラグインの両方で統合しなければならない (SHALL)。
+`ui-ux-pro-max` を SKILL.md + MCP プラグインの両方で統合しなければならない (SHALL)。
 
 #### Happy Path Scenarios
 
-- **GIVEN** ui-ux-pro-max-skill を統合する **WHEN** SKILL.md を作成する **THEN** UX ガイドライン・デザイン原則を SKILL.md に記載し、MCP プラグインの利用方法（検索コマンド、`--design-system` フラグ等）も記載する
-- **GIVEN** MCP プラグインをインストールする **WHEN** Claude Code の設定を確認する **THEN** MCP サーバーとして `ui-ux-pro-max-skill` が登録されている
+- **GIVEN** ui-ux-pro-max を統合する **WHEN** SKILL.md を作成する **THEN** UX ガイドライン・デザイン原則を SKILL.md に記載し、MCP プラグインの利用方法（検索コマンド、`--design-system` フラグ等）も記載する
+- **GIVEN** MCP プラグインをインストールする **WHEN** Claude Code の設定を確認する **THEN** MCP サーバーとして `ui-ux-pro-max` が登録されている
 
 #### Error Scenarios
 
-- **GIVEN** MCP プラグインが利用不可（Python 未インストール等） **WHEN** ui-ux-pro-max-skill を使用する **THEN** SKILL.md のルール・ガイドラインのみで動作し、MCP 検索機能なしでもベストプラクティスを提供する
-- **GIVEN** MCP プラグインのインストールがネットワークエラーやバージョン不整合で失敗する **WHEN** ui-ux-pro-max-skill を統合する **THEN** SKILL.md のみで完了とし、MCP プラグインのインストールは後日リトライ可能と記録する
+- **GIVEN** MCP プラグインが利用不可（Python 未インストール等） **WHEN** ui-ux-pro-max を使用する **THEN** SKILL.md のルール・ガイドラインのみで動作し、MCP 検索機能なしでもベストプラクティスを提供する
+- **GIVEN** MCP プラグインのインストールがネットワークエラーやバージョン不整合で失敗する **WHEN** ui-ux-pro-max を統合する **THEN** SKILL.md のみで完了とし、MCP プラグインのインストールは後日リトライ可能と記録する
 
 #### Non-Functional Requirements
 
@@ -162,7 +162,7 @@
 - **GIVEN** `vitest-testing-patterns` を作成する **WHEN** 内容を検証する **THEN** RTL クエリ優先順位、モック戦略（vi.mock/vi.fn/vi.spyOn）、テストファクトリ、userEvent、カバレッジ設定を含む
 - **GIVEN** `terraform-gcp-expert` を作成する **WHEN** 内容を検証する **THEN** GCP リソース設計、モジュール化、ステート管理、IAM 最小権限、命名規約、環境分離、Secret Manager 連携を含む
 - **GIVEN** `architecture-patterns` を作成する **WHEN** 内容を検証する **THEN** SOLID 原則、DDD 基本概念、ADR パターン、モジュール境界、依存関係ルール、レイヤードアーキテクチャを含む
-- **GIVEN** `ui-ux-pro-max-skill` を作成する **WHEN** 内容を検証する **THEN** デザインシステム原則、カラーパレット選定指針、フォントペアリング指針、UX ガイドライン、MCP 検索機能の使用方法を含む
+- **GIVEN** `ui-ux-pro-max` を作成する **WHEN** 内容を検証する **THEN** デザインシステム原則、カラーパレット選定指針、フォントペアリング指針、UX ガイドライン、MCP 検索機能の使用方法を含む
 
 #### Error Scenarios
 

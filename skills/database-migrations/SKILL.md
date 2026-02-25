@@ -1,391 +1,335 @@
 ---
 name: database-migrations
-description: "When creating, modifying, or reviewing database schema changes (prisma/migrations/, *.prisma files). Provides zero-downtime Expand-Contract migration patterns, data loss risk detection, staged migration strategies, rollback procedures, and Prisma Migrate workflow best practices. MUST be invoked before executing any schema migration or column rename/remove operation."
+description: Database migration best practices for schema changes, data migrations, rollbacks, and zero-downtime deployments across PostgreSQL, MySQL, and common ORMs (Prisma, Drizzle, Django, TypeORM, golang-migrate).
+origin: ECC
 ---
 
-# データベースマイグレーションスキル
+# Database Migration Patterns
 
-## 原則
+Safe, reversible database schema changes for production systems.
 
-本番データベースのスキーマ変更はゼロダウンタイムで実施する。
-データ損失リスクを事前に検知し、段階的なマイグレーション戦略で安全に適用する。
-Prisma Migrate を中心としたワークフローに従い、手動 SQL 操作を排除する。
+## When to Activate
 
----
+- Creating or altering database tables
+- Adding/removing columns or indexes
+- Running data migrations (backfill, transform)
+- Planning zero-downtime schema changes
+- Setting up migration tooling for a new project
 
-## Expand-Contract パターン（ゼロダウンタイムの核心）
+## Core Principles
 
-すべての破壊的スキーマ変更は Expand-Contract パターンで実施する。直接的なカラム名変更・削除は禁止。
+1. **Every change is a migration** — never alter production databases manually
+2. **Migrations are forward-only in production** — rollbacks use new forward migrations
+3. **Schema and data migrations are separate** — never mix DDL and DML in one migration
+4. **Test migrations against production-sized data** — a migration that works on 100 rows may lock on 10M
+5. **Migrations are immutable once deployed** — never edit a migration that has run in production
 
-### 3フェーズ構成
+## Migration Safety Checklist
 
-```
-Phase 1: EXPAND（拡張）
-  - 新しいカラム/テーブルを追加（nullable または default 付き）
-  - アプリケーションは新旧両方に書き込む
-  - 既存データをバックフィルする
+Before applying any migration:
 
-Phase 2: MIGRATE（移行）
-  - アプリケーションは新カラムから読み取り、新旧両方に書き込む
-  - データ整合性を検証する
+- [ ] Migration has both UP and DOWN (or is explicitly marked irreversible)
+- [ ] No full table locks on large tables (use concurrent operations)
+- [ ] New columns have defaults or are nullable (never add NOT NULL without default)
+- [ ] Indexes created concurrently (not inline with CREATE TABLE for existing tables)
+- [ ] Data backfill is a separate migration from schema change
+- [ ] Tested against a copy of production data
+- [ ] Rollback plan documented
 
-Phase 3: CONTRACT（収縮）
-  - アプリケーションは新カラムのみを使用する
-  - 旧カラム/テーブルを別マイグレーションで削除する
-```
+## PostgreSQL Patterns
 
-### タイムライン例
+### Adding a Column Safely
 
-```
-Day 1: マイグレーション - new_status カラム追加（nullable）
-Day 1: アプリ v2 デプロイ - status と new_status の両方に書き込み
-Day 2: バックフィルマイグレーション実行
-Day 3: アプリ v3 デプロイ - new_status のみ読み取り
-Day 7: マイグレーション - 旧 status カラム削除
-```
+```sql
+-- GOOD: Nullable column, no lock
+ALTER TABLE users ADD COLUMN avatar_url TEXT;
 
----
+-- GOOD: Column with default (Postgres 11+ is instant, no rewrite)
+ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT true;
 
-## データ損失リスク検出
-
-以下の操作はデータ損失リスクがある。マイグレーション作成時に必ずチェックする。
-
-### 高リスク操作（必ず Expand-Contract を適用）
-
-| 操作 | リスク | 安全な代替手段 |
-|------|--------|---------------|
-| カラム削除 | データ完全消失 | まずアプリコードから参照を削除 → 次のデプロイで削除 |
-| カラム名変更 | アプリエラー + データアクセス不能 | Expand-Contract（新カラム追加 → バックフィル → 旧カラム削除） |
-| カラム型変更 | データ切り捨て・変換エラー | 新カラム追加 → データ変換 → 旧カラム削除 |
-| NOT NULL 制約の追加 | 既存 NULL 行でエラー | バックフィルしてから制約追加 |
-| テーブル削除 | データ完全消失 | まずアプリコードから参照を削除 → バックアップ確認 → 削除 |
-
-### 中リスク操作（注意して実施）
-
-| 操作 | リスク | 対策 |
-|------|--------|------|
-| UNIQUE 制約の追加 | 重複データでエラー | 事前に重複データを確認・解消 |
-| 外部キー制約の追加 | 孤立レコードでエラー | 事前に参照整合性を確認 |
-| デフォルト値の変更 | 既存レコードには影響しない | 影響範囲を確認 |
-
-### 安全な操作（直接実行可能）
-
-- nullable カラムの追加
-- デフォルト値付きカラムの追加（PostgreSQL 11+ は即座に完了、テーブル書き換えなし）
-- インデックスの追加（CONCURRENTLY を使用する場合）
-- テーブルの新規作成
-
----
-
-## 段階的マイグレーション戦略
-
-### スキーマ変更とデータ変更の分離
-
-スキーマ変更（DDL）とデータ変更（DML）は必ず別マイグレーションにする。
-
-```
-migrations/
-  20240115_add_display_name/       ← DDL: カラム追加
-  20240116_backfill_display_name/  ← DML: データバックフィル
-  20240120_drop_username/          ← DDL: 旧カラム削除
+-- BAD: NOT NULL without default on existing table (requires full rewrite)
+ALTER TABLE users ADD COLUMN role TEXT NOT NULL;
+-- This locks the table and rewrites every row
 ```
 
-**理由**:
-- ロールバックが容易になる
-- 長時間トランザクションを回避できる
-- 各ステップを個別にテストできる
+### Adding an Index Without Downtime
 
-### 大量データのバックフィル
+```sql
+-- BAD: Blocks writes on large tables
+CREATE INDEX idx_users_email ON users (email);
 
-大量データのバックフィルはバッチ処理で実施する。一括 UPDATE はテーブルロックを引き起こす。
+-- GOOD: Non-blocking, allows concurrent writes
+CREATE INDEX CONCURRENTLY idx_users_email ON users (email);
 
-```typescript
-// Prisma でのバッチバックフィル例
-async function backfillDisplayNames(prisma: PrismaClient) {
-  const batchSize = 5000;
-  let processed = 0;
+-- Note: CONCURRENTLY cannot run inside a transaction block
+-- Most migration tools need special handling for this
+```
 
-  while (true) {
-    const users = await prisma.user.findMany({
-      where: { displayName: null },
-      take: batchSize,
-      select: { id: true, username: true },
-    });
+### Renaming a Column (Zero-Downtime)
 
-    if (users.length === 0) break;
+Never rename directly in production. Use the expand-contract pattern:
 
-    await prisma.$transaction(
-      users.map((user) =>
-        prisma.user.update({
-          where: { id: user.id },
-          data: { displayName: user.username },
-        })
-      )
+```sql
+-- Step 1: Add new column (migration 001)
+ALTER TABLE users ADD COLUMN display_name TEXT;
+
+-- Step 2: Backfill data (migration 002, data migration)
+UPDATE users SET display_name = username WHERE display_name IS NULL;
+
+-- Step 3: Update application code to read/write both columns
+-- Deploy application changes
+
+-- Step 4: Stop writing to old column, drop it (migration 003)
+ALTER TABLE users DROP COLUMN username;
+```
+
+### Removing a Column Safely
+
+```sql
+-- Step 1: Remove all application references to the column
+-- Step 2: Deploy application without the column reference
+-- Step 3: Drop column in next migration
+ALTER TABLE orders DROP COLUMN legacy_status;
+
+-- For Django: use SeparateDatabaseAndState to remove from model
+-- without generating DROP COLUMN (then drop in next migration)
+```
+
+### Large Data Migrations
+
+```sql
+-- BAD: Updates all rows in one transaction (locks table)
+UPDATE users SET normalized_email = LOWER(email);
+
+-- GOOD: Batch update with progress
+DO $$
+DECLARE
+  batch_size INT := 10000;
+  rows_updated INT;
+BEGIN
+  LOOP
+    UPDATE users
+    SET normalized_email = LOWER(email)
+    WHERE id IN (
+      SELECT id FROM users
+      WHERE normalized_email IS NULL
+      LIMIT batch_size
+      FOR UPDATE SKIP LOCKED
     );
-
-    processed += users.length;
-    console.error(`Backfilled ${processed} users`);
-  }
-}
+    GET DIAGNOSTICS rows_updated = ROW_COUNT;
+    RAISE NOTICE 'Updated % rows', rows_updated;
+    EXIT WHEN rows_updated = 0;
+    COMMIT;
+  END LOOP;
+END $$;
 ```
 
----
+## Prisma (TypeScript/Node.js)
 
-## ロールバック戦略
-
-### Prisma Migrate のロールバック方針
-
-Prisma Migrate は本番環境での DOWN マイグレーションを直接サポートしない。
-ロールバックは「新しい forward マイグレーション」として実施する。
-
-### ロールバック手順
-
-#### 失敗したマイグレーションの解決
+### Workflow
 
 ```bash
-# マイグレーションをロールバック済みとしてマーク
-npx prisma migrate resolve --rolled-back 20240115000000_add_users_table
-
-# 手動でロールバック SQL を実行（必要な場合）
-npx prisma db execute --file ./down.sql
-
-# 修正後に再デプロイ
-npx prisma migrate deploy
-```
-
-#### down.sql の生成
-
-```bash
-# マイグレーション作成時に down.sql も生成する
-# Prisma 公式ワークフロー:
-# 1. 変更前のスキーマを保存
-# 2. マイグレーション適用後、元のスキーマに戻す
-# 3. prisma migrate diff でロールバック SQL を生成
-
-npx prisma migrate diff \
-  --from-migrations ./prisma/migrations \
-  --to-schema-datamodel ./prisma/schema.prisma.backup \
-  --script > down.sql
-```
-
-### ロールバック判断基準
-
-| 状況 | アクション |
-|------|-----------|
-| マイグレーション途中で失敗 | `migrate resolve --rolled-back` + 手動修復 |
-| マイグレーション成功、アプリにバグ | アプリをロールバック（スキーマはそのまま） |
-| データ破損の可能性 | バックアップからリストア + `migrate resolve` |
-
----
-
-## Prisma Migrate ワークフロー
-
-### 開発環境
-
-```bash
-# スキーマ変更後、マイグレーション作成 + 適用
+# Create migration from schema changes
 npx prisma migrate dev --name add_user_avatar
 
-# マイグレーションを作成するが適用しない（手動編集用）
-npx prisma migrate dev --create-only --name add_email_index
+# Apply pending migrations in production
+npx prisma migrate deploy
 
-# データベースをリセット（全データ削除 + 全マイグレーション再適用）
+# Reset database (dev only)
 npx prisma migrate reset
 
-# Prisma Client を再生成
+# Generate client after schema changes
 npx prisma generate
 ```
 
-### 本番環境
+### Schema Example
+
+```prisma
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  avatarUrl String?  @map("avatar_url")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  orders    Order[]
+
+  @@map("users")
+  @@index([email])
+}
+```
+
+### Custom SQL Migration
+
+For operations Prisma cannot express (concurrent indexes, data backfills):
 
 ```bash
-# 保留中のマイグレーションを適用（非対話的、アドバイザリーロック付き）
-npx prisma migrate deploy
+# Create empty migration, then edit the SQL manually
+npx prisma migrate dev --create-only --name add_email_index
 ```
-
-**`migrate deploy` の特徴**:
-- アドバイザリーロックにより同時実行を防止
-- `_prisma_migrations` テーブルで適用済みマイグレーションを追跡
-- 失敗した場合はその時点で停止（部分適用の可能性あり）
-
-### CI/CD パイプライン
-
-```yaml
-# GitHub Actions 例
-name: Deploy Migrations
-on:
-  push:
-    paths:
-      - prisma/migrations/**
-    branches:
-      - main
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-      - run: npm ci
-      - run: npx prisma migrate deploy
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-```
-
-### カスタム SQL マイグレーション
-
-Prisma が自動生成できない操作（CONCURRENTLY インデックス、データバックフィル等）には手動編集を使う。
-
-```bash
-# 空のマイグレーションを作成
-npx prisma migrate dev --create-only --name add_concurrent_index
-```
-
-作成された `migration.sql` を手動編集:
 
 ```sql
--- Prisma は CONCURRENTLY を生成できないため手動で記述
+-- migrations/20240115_add_email_index/migration.sql
+-- Prisma cannot generate CONCURRENTLY, so we write it manually
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_users_email ON users (email);
 ```
 
----
+## Drizzle (TypeScript/Node.js)
 
-## カラム名変更の安全なパターン
-
-Prisma スキーマで `@map` を活用し、アプリケーション側の名前変更とデータベース側の名前変更を分離する。
-
-### パターン 1: アプリ側のみ名前変更（推奨）
-
-データベースカラム名はそのままで、Prisma フィールド名だけ変更する。
-
-```prisma
-model User {
-  // データベースカラム名 "username" はそのまま
-  // Prisma クライアントでは "displayName" としてアクセス
-  displayName String @map("username")
-}
-```
-
-**メリット**: マイグレーション不要。データ損失リスクゼロ。
-
-### パターン 2: データベース側も名前変更（Expand-Contract）
-
-```
-// Step 1: 新カラム追加（マイグレーション 1）
-model User {
-  username    String?      // 旧カラム（nullable に変更）
-  displayName String?      // 新カラム追加
-}
-
-// Step 2: バックフィル（マイグレーション 2: カスタム SQL）
-
-// Step 3: 旧カラム削除（マイグレーション 3）
-model User {
-  displayName String       // 新カラムのみ
-}
-```
-
----
-
-## カラム削除の安全なパターン
-
-### 2段階デプロイ
-
-```
-Deploy 1: アプリケーションコードからカラム参照を削除
-  - Prisma スキーマからフィールドを削除
-  - prisma migrate dev --create-only で SQL を確認
-  - DROP COLUMN が含まれていることを確認
-
-Deploy 2: マイグレーション適用
-  - npx prisma migrate deploy
-```
-
-**禁止**: アプリコード変更とカラム削除を同一デプロイに含めない。
-デプロイの順序が保証されない環境では、旧バージョンのアプリが削除済みカラムにアクセスしてエラーになる。
-
----
-
-## インデックス作成の考慮事項
-
-### CONCURRENTLY インデックス
-
-大規模テーブルへのインデックス追加は `CREATE INDEX CONCURRENTLY` を使用する。
-通常の `CREATE INDEX` はテーブルへの書き込みをブロックする。
+### Workflow
 
 ```bash
-# Prisma は CONCURRENTLY を自動生成しないため手動マイグレーションを使う
-npx prisma migrate dev --create-only --name add_users_email_index
+# Generate migration from schema changes
+npx drizzle-kit generate
+
+# Apply migrations
+npx drizzle-kit migrate
+
+# Push schema directly (dev only, no migration file)
+npx drizzle-kit push
 ```
+
+### Schema Example
+
+```typescript
+import { pgTable, text, timestamp, uuid, boolean } from "drizzle-orm/pg-core";
+
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+```
+
+## Django (Python)
+
+### Workflow
+
+```bash
+# Generate migration from model changes
+python manage.py makemigrations
+
+# Apply migrations
+python manage.py migrate
+
+# Show migration status
+python manage.py showmigrations
+
+# Generate empty migration for custom SQL
+python manage.py makemigrations --empty app_name -n description
+```
+
+### Data Migration
+
+```python
+from django.db import migrations
+
+def backfill_display_names(apps, schema_editor):
+    User = apps.get_model("accounts", "User")
+    batch_size = 5000
+    users = User.objects.filter(display_name="")
+    while users.exists():
+        batch = list(users[:batch_size])
+        for user in batch:
+            user.display_name = user.username
+        User.objects.bulk_update(batch, ["display_name"], batch_size=batch_size)
+
+def reverse_backfill(apps, schema_editor):
+    pass  # Data migration, no reverse needed
+
+class Migration(migrations.Migration):
+    dependencies = [("accounts", "0015_add_display_name")]
+
+    operations = [
+        migrations.RunPython(backfill_display_names, reverse_backfill),
+    ]
+```
+
+### SeparateDatabaseAndState
+
+Remove a column from the Django model without dropping it from the database immediately:
+
+```python
+class Migration(migrations.Migration):
+    operations = [
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.RemoveField(model_name="user", name="legacy_field"),
+            ],
+            database_operations=[],  # Don't touch the DB yet
+        ),
+    ]
+```
+
+## golang-migrate (Go)
+
+### Workflow
+
+```bash
+# Create migration pair
+migrate create -ext sql -dir migrations -seq add_user_avatar
+
+# Apply all pending migrations
+migrate -path migrations -database "$DATABASE_URL" up
+
+# Rollback last migration
+migrate -path migrations -database "$DATABASE_URL" down 1
+
+# Force version (fix dirty state)
+migrate -path migrations -database "$DATABASE_URL" force VERSION
+```
+
+### Migration Files
 
 ```sql
--- migration.sql を手動編集
--- 通常の CREATE INDEX ではなく CONCURRENTLY を使用
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_users_email
-  ON users (email);
+-- migrations/000003_add_user_avatar.up.sql
+ALTER TABLE users ADD COLUMN avatar_url TEXT;
+CREATE INDEX CONCURRENTLY idx_users_avatar ON users (avatar_url) WHERE avatar_url IS NOT NULL;
 
--- 注意: CONCURRENTLY はトランザクション内で実行できない
--- Prisma のマイグレーションはデフォルトでトランザクション内実行のため、
--- migration.sql の先頭に以下を追加する必要がある場合がある:
--- (Prisma は -- WrappedInTransaction: false コメントで制御)
+-- migrations/000003_add_user_avatar.down.sql
+DROP INDEX IF EXISTS idx_users_avatar;
+ALTER TABLE users DROP COLUMN IF EXISTS avatar_url;
 ```
 
-### インデックス設計ガイドライン
+## Zero-Downtime Migration Strategy
 
-| クエリパターン | インデックス種別 | Prisma スキーマ |
-|---------------|----------------|-----------------|
-| 等価検索 | B-tree | `@@index([field])` |
-| 複合条件（等価 + 範囲） | 複合 B-tree | `@@index([status, createdAt])` |
-| UNIQUE 制約 | Unique | `@@unique([email])` |
-| 部分インデックス | カスタム SQL | 手動マイグレーション |
+For critical production changes, follow the expand-contract pattern:
 
-```prisma
-model Order {
-  id        String   @id @default(cuid())
-  status    String
-  userId    String
-  createdAt DateTime @default(now())
+```
+Phase 1: EXPAND
+  - Add new column/table (nullable or with default)
+  - Deploy: app writes to BOTH old and new
+  - Backfill existing data
 
-  user User @relation(fields: [userId], references: [id])
+Phase 2: MIGRATE
+  - Deploy: app reads from NEW, writes to BOTH
+  - Verify data consistency
 
-  // 複合インデックス: 等価カラムを先、範囲カラムを後に配置
-  @@index([status, createdAt])
-  // 外部キーインデックス（N+1 防止に必須）
-  @@index([userId])
-}
+Phase 3: CONTRACT
+  - Deploy: app only uses NEW
+  - Drop old column/table in separate migration
 ```
 
----
+### Timeline Example
 
-## マイグレーション安全チェックリスト
+```
+Day 1: Migration adds new_status column (nullable)
+Day 1: Deploy app v2 — writes to both status and new_status
+Day 2: Run backfill migration for existing rows
+Day 3: Deploy app v3 — reads from new_status only
+Day 7: Migration drops old status column
+```
 
-マイグレーション実行前に必ず確認する。
+## Anti-Patterns
 
-- [ ] `--create-only` で SQL を事前確認したか
-- [ ] データ損失リスクのある操作を Expand-Contract に分解したか
-- [ ] 大規模テーブルのインデックスに CONCURRENTLY を使用しているか
-- [ ] スキーマ変更とデータ変更を別マイグレーションに分離したか
-- [ ] ロールバック手順（down.sql）を準備したか
-- [ ] 本番相当のデータ量でテストしたか
-- [ ] `npx prisma migrate deploy` で適用されることを確認したか
-
----
-
-## アンチパターン
-
-| アンチパターン | 問題 | 正しいアプローチ |
-|---------------|------|-----------------|
-| 本番 DB への手動 SQL 実行 | 監査証跡なし、再現不可能 | 常にマイグレーションファイルを使用 |
-| デプロイ済みマイグレーションの編集 | 環境間のドリフト | 新しいマイグレーションを作成 |
-| NOT NULL カラムの直接追加 | テーブルロック + 全行書き換え | nullable で追加 → バックフィル → 制約追加 |
-| 大規模テーブルに通常の CREATE INDEX | 書き込みブロック | CREATE INDEX CONCURRENTLY |
-| スキーマ変更 + データ変更を1マイグレーションに | ロールバック困難、長時間トランザクション | 別マイグレーションに分離 |
-| コード変更前にカラム削除 | アプリエラー | コード変更を先にデプロイ |
-| `migrate reset` を本番で実行 | 全データ消失 | 開発環境専用。本番は `migrate deploy` のみ |
-| `migrate dev` を本番で実行 | シャドウ DB 作成、データ損失の可能性 | 本番は `migrate deploy` のみ |
-
----
-
-## Applicability
-
-- **フェーズ**: implementation, review, design
-- **ドメイン**: prisma-database
+| Anti-Pattern | Why It Fails | Better Approach |
+|-------------|-------------|-----------------|
+| Manual SQL in production | No audit trail, unrepeatable | Always use migration files |
+| Editing deployed migrations | Causes drift between environments | Create new migration instead |
+| NOT NULL without default | Locks table, rewrites all rows | Add nullable, backfill, then add constraint |
+| Inline index on large table | Blocks writes during build | CREATE INDEX CONCURRENTLY |
+| Schema + data in one migration | Hard to rollback, long transactions | Separate migrations |
+| Dropping column before removing code | Application errors on missing column | Remove code first, drop column next deploy |

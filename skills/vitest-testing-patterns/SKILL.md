@@ -1,459 +1,495 @@
 ---
 name: vitest-testing-patterns
-description: "When writing or reviewing test files using Vitest and React Testing Library. Provides Vitest 3.x mock strategies, RTL query priority, userEvent patterns, coverage configuration, and test factory patterns. MUST be invoked before creating or modifying any .test.ts/.test.tsx file."
+user-invocable: false
+description: Use when vitest testing patterns including unit tests, mocks, spies, and browser mode testing.
+allowed-tools: [Read, Write, Edit, Bash, Glob, Grep]
 ---
 
-# Vitest + React Testing Library テストパターン
+# vitest testing patterns
 
-Vitest 3.x と React Testing Library を使用したテストの標準パターン集。
-Jest パターンは一切使用せず、Vitest 固有の API のみを使用する。
+Master Vitest testing patterns including unit tests, mocks, spies, and browser mode testing. This skill provides comprehensive coverage of essential concepts, patterns, and best practices for professional Vitest development.
 
-## 適用条件
+## Overview
 
-以下のファイルを作成・変更する場合に適用:
-- `*.test.ts` / `*.test.tsx` / `*.spec.ts` / `*.spec.tsx` ファイル
-- テストのセットアップファイル（`vitest.setup.ts` 等）
-- `vitest.config.ts` のテスト関連設定
+Vitest is a powerful tool for typescript development, providing robust capabilities for maintaining code quality and ensuring reliable software delivery. This skill covers the fundamental through advanced aspects of working with Vitest.
 
----
+## Installation and Setup
 
-## 1. セットアップファイル構成
+### Basic Installation
 
-### vitest.config.ts の基本構成
+Setting up Vitest requires proper installation and configuration in your development environment.
 
-```typescript
-import { defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react'
-
-export default defineConfig({
-  plugins: [react()],
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./vitest.setup.ts'],
-    css: true,
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html', 'lcov'],
-      include: ['src/**/*.{ts,tsx}'],
-      exclude: [
-        'src/**/*.d.ts',
-        'src/**/*.test.{ts,tsx}',
-        'src/**/*.stories.{ts,tsx}',
-        'src/**/index.ts',
-      ],
-      thresholds: {
-        statements: 80,
-        branches: 80,
-        functions: 80,
-        lines: 80,
-        // クリティカルパス: 高い閾値を個別指定可能
-        'src/utils/**/*.ts': {
-          statements: 95,
-          branches: 90,
-          functions: 95,
-          lines: 95,
-        },
-      },
-    },
-  },
-})
+```bash
+# Installation command specific to Vitest
+# Follow official documentation for latest version
 ```
 
-### vitest.setup.ts の必須インポート
+### Project Configuration
+
+Create appropriate configuration files and setup for your project structure:
+
+- Configuration file setup
+- Project structure organization
+- Team collaboration setup
+- CI/CD integration preparation
+
+## Core Concepts
+
+### Fundamental Principles
+
+Understanding the core principles of Vitest is essential for effective usage:
+
+1. **Architecture** - How Vitest is structured and operates
+2. **Configuration** - Setting up and customizing behavior
+3. **Integration** - Working with other tools and frameworks
+4. **Best Practices** - Industry-standard approaches
+
+### Key Features
+
+Vitest provides several key features that make it valuable:
+
+- Feature 1: Core functionality
+- Feature 2: Advanced capabilities  
+- Feature 3: Integration options
+- Feature 4: Performance optimization
+- Feature 5: Extensibility
+
+### Configuration Strategy
+
+Proper configuration ensures Vitest works optimally:
+
+- Environment-specific setup
+- Team standards enforcement
+- Performance tuning
+- Error handling configuration
+
+### Advanced Usage
+
+For complex scenarios, Vitest offers advanced capabilities:
+
+- Custom extensions
+- Advanced patterns
+- Performance optimization
+- Scalability considerations
+
+## Code Examples
+
+### Example 1: Basic Setup
 
 ```typescript
-// jest-dom のカスタムマッチャーを Vitest で使用するための必須インポート
-// toBeInTheDocument(), toHaveTextContent() 等を有効にする
-import '@testing-library/jest-dom/vitest'
-
-import { cleanup } from '@testing-library/react'
-import { afterEach } from 'vitest'
-
-afterEach(() => {
-  cleanup()
-})
-```
-
-**重要**: `@testing-library/jest-dom` ではなく `@testing-library/jest-dom/vitest` をインポートすること。
-Vitest 用エントリポイントを使用することで `expect` への型拡張が正しく適用される。
-
----
-
-## 2. RTL クエリ優先度
-
-クエリの選択はアクセシビリティとユーザー視点を反映する。上位ほど優先して使用する。
-
-| 優先度 | クエリ | 用途 |
-|--------|--------|------|
-| 1 (最優先) | `getByRole` | ボタン、リンク、見出し、フォーム要素等 |
-| 2 | `getByLabelText` | フォーム入力要素 |
-| 3 | `getByPlaceholderText` | ラベルのない入力要素（非推奨パターン） |
-| 4 | `getByText` | 非インタラクティブ要素の表示テキスト |
-| 5 | `getByDisplayValue` | 入力済みフォーム要素 |
-| 6 | `getByAltText` | 画像等 |
-| 7 | `getByTitle` | ツールチップ等（使用は限定的） |
-| 8 (最終手段) | `getByTestId` | 他のクエリで取得不可能な場合のみ |
-
-### クエリバリアント
-
-| バリアント | 0件時 | 1件超時 | 非同期 | 用途 |
-|------------|--------|---------|--------|------|
-| `getBy` | エラー | エラー | No | 要素が必ず存在する場合 |
-| `queryBy` | `null` | エラー | No | 要素が存在しないことを確認する場合 |
-| `findBy` | エラー | エラー | Yes | 非同期で要素が出現するのを待つ場合 |
-| `getAllBy` | エラー | 配列 | No | 複数要素が必ず存在する場合 |
-| `queryAllBy` | `[]` | 配列 | No | 複数要素の不在確認 |
-| `findAllBy` | エラー | 配列 | Yes | 非同期で複数要素を待つ場合 |
-
-### クエリ使用例
-
-```typescript
-// 優先: getByRole（アクセシビリティロール + 名前）
-screen.getByRole('button', { name: '送信' })
-screen.getByRole('heading', { level: 2 })
-screen.getByRole('textbox', { name: 'メールアドレス' })
-
-// フォーム要素: getByLabelText
-screen.getByLabelText('ユーザー名')
-
-// テキスト表示: getByText（正規表現も可）
-screen.getByText(/エラー/i)
-
-// 不在確認: queryBy（null を返す）
-expect(screen.queryByText('エラー')).not.toBeInTheDocument()
-
-// 非同期待機: findBy（Promise を返す）
-const heading = await screen.findByRole('heading', { name: 'ようこそ' })
-
-// 最終手段: getByTestId（他のクエリで取得できない場合のみ）
-screen.getByTestId('custom-dropdown')
-```
-
----
-
-## 3. userEvent の使用（fireEvent より優先）
-
-`userEvent` はユーザー操作に伴う一連のイベント（focus, keydown, input, change 等）を
-正しい順序で発火する。`fireEvent` は単一イベントのみのため使用しない。
-
-```typescript
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-
-describe('LoginForm', () => {
-  it('ログインフォームを送信できる', async () => {
-    const user = userEvent.setup()
-    render(<LoginForm onSubmit={handleSubmit} />)
-
-    await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
-    await user.type(screen.getByLabelText('パスワード'), 'password123')
-    await user.click(screen.getByRole('button', { name: 'ログイン' }))
-
-    expect(handleSubmit).toHaveBeenCalledWith({
-      email: 'test@example.com',
-      password: 'password123',
-    })
-  })
-})
-```
-
-### 主要 API
-
-```typescript
-const user = userEvent.setup()
-
-await user.type(element, 'テキスト')       // テキスト入力
-await user.click(element)                  // クリック
-await user.dblClick(element)               // ダブルクリック
-await user.keyboard('{Enter}')             // キーボード操作
-await user.keyboard('{Shift>}A{/Shift}')   // 修飾キー付き
-await user.selectOptions(select, ['opt1']) // セレクト
-await user.clear(input)                    // クリア
-await user.tab()                           // タブ移動
-await user.hover(element)                  // ホバー
-await user.unhover(element)                // ホバー解除
-```
-
-**重要**: `userEvent.setup()` はテストの先頭で1回呼び出す。各 API は非同期（`await` 必須）。
-
----
-
-## 4. Vitest モック戦略
-
-### 4.1 vi.fn() -- 関数モック
-
-```typescript
-const handleClick = vi.fn()
-render(<Button onClick={handleClick}>送信</Button>)
-
-await user.click(screen.getByRole('button', { name: '送信' }))
-expect(handleClick).toHaveBeenCalledOnce()
-```
-
-### 4.2 vi.mock() -- モジュールモック
-
-ファイル先頭に巻き上げ（hoist）される。
-
-```typescript
-import { fetchUser } from './api'
-
-vi.mock('./api', () => ({
-  fetchUser: vi.fn(),
-}))
-
-// vi.mocked() で型安全にモック API にアクセス
-vi.mocked(fetchUser).mockResolvedValue({ id: '1', name: 'テストユーザー' })
-```
-
-### 4.3 vi.mock() with import() -- 型安全なモジュールモック
-
-`import()` で IDE の型推論とリファクタリングサポートが向上する。
-
-```typescript
-vi.mock(import('./api'), async (importOriginal) => {
-  const mod = await importOriginal()
-  return {
-    ...mod,
-    fetchUser: vi.fn(),
-  }
-})
-```
-
-### 4.4 vi.hoisted() -- ESM モジュールモックの巻き上げ
-
-`vi.mock()` は巻き上げされるため通常のスコープ変数にアクセスできない。
-`vi.hoisted()` で宣言した変数は `vi.mock()` より先に評価される。
-
-```typescript
-import { sendEmail } from './email-service'
-
-const mocks = vi.hoisted(() => ({
-  sendEmail: vi.fn(),
-}))
-
-vi.mock('./email-service', () => ({
-  sendEmail: mocks.sendEmail,
-}))
-
-// テスト内で使用
-mocks.sendEmail.mockResolvedValue({ success: true })
-await notifyUser('user@example.com', '件名', '本文')
-expect(mocks.sendEmail).toHaveBeenCalledWith('user@example.com', '件名', '本文')
-```
-
-### 4.5 vi.spyOn() -- 既存実装のスパイ
-
-元の実装を維持しつつ呼び出しを追跡。一時的に実装を差し替えることも可能。
-
-```typescript
-import * as mathUtils from './math-utils'
-
-// 追跡のみ（元の実装が実行される）
-const spy = vi.spyOn(mathUtils, 'add')
-expect(mathUtils.add(1, 2)).toBe(3)
-expect(spy).toHaveBeenCalledWith(1, 2)
-
-// 実装差し替え
-vi.spyOn(mathUtils, 'add').mockReturnValue(999)
-expect(mathUtils.add(1, 2)).toBe(999)
-
-// 必ず復元する
-afterEach(() => { vi.restoreAllMocks() })
-```
-
-### 4.6 vi.mock() with { spy: true } -- スパイモード
-
-モジュール全体の呼び出しを追跡しつつ元の実装を維持する。
-
-```typescript
-import { calculator } from './calculator'
-
-vi.mock('./calculator', { spy: true })
-
-const result = calculator(1, 2)
-expect(result).toBe(3)
-expect(calculator).toHaveBeenCalledWith(1, 2)
-```
-
-### 4.7 デフォルトエクスポートのモック
-
-```typescript
-vi.mock('./logger', () => ({
-  default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() },
-}))
-```
-
-### 4.8 vi.mocked() -- 型ユーティリティ
-
-モック化した関数に型安全にアクセスする。`mockResolvedValue` 等の型補完が有効になる。
-
-```typescript
-import { fetchData } from './api'
-vi.mock('./api', () => ({ fetchData: vi.fn() }))
-
-vi.mocked(fetchData).mockResolvedValue({ id: '1', name: 'test' })
-expect(vi.mocked(fetchData)).toHaveBeenCalledWith('/endpoint')
-```
-
----
-
-## 5. テストファクトリパターン
-
-テストデータの生成を関数化し、テスト間の重複を排除する。
-
-```typescript
-// test/factories/user.ts
-import type { User } from '@/types'
-
-export function createUser(overrides: Partial<User> = {}): User {
-  return {
-    id: 'user-1',
-    name: 'テストユーザー',
-    email: 'test@example.com',
-    role: 'member',
-    createdAt: new Date('2024-01-01'),
-    ...overrides,
-  }
+// Basic Vitest setup
+// Demonstrates fundamental usage patterns
+// Shows proper initialization and configuration
+
+// Core setup code
+function basicSetup() {
+  // Initialize framework
+  // Configure basic options
+  // Return configured instance
 }
 
-export function createAdmin(overrides: Partial<User> = {}): User {
-  return createUser({ role: 'admin', ...overrides })
+// Usage example
+const instance = basicSetup();
+```
+
+### Example 2: Configuration
+
+```typescript
+// Configuration example for Vitest
+// Shows how to properly configure
+// Includes common options and patterns
+
+// Configuration object
+const config = {
+  option1: 'value1',
+  option2: 'value2',
+  advanced: {
+    setting1: true,
+    setting2: false
+  }
+};
+
+// Apply configuration
+function applyConfig(config) {
+  // Validation logic
+  // Application logic
+  // Return result
 }
 ```
 
-### シーケンス付きファクトリ（一意性が必要な場合）
+### Example 3: Advanced Pattern
 
 ```typescript
-let seq = 0
-export function createUser(overrides: Partial<User> = {}): User {
-  seq++
-  return {
-    id: `user-${seq}`,
-    name: `テストユーザー${seq}`,
-    email: `test${seq}@example.com`,
-    role: 'member',
-    createdAt: new Date('2024-01-01'),
-    ...overrides,
+// Advanced usage pattern
+// Demonstrates sophisticated techniques
+// Shows best practices in action
+
+function advancedPattern() {
+  // Setup phase
+  // Execution phase
+  // Cleanup phase
+}
+```
+
+### Example 4: Integration
+
+```typescript
+// Integration with other tools
+// Shows real-world usage
+// Demonstrates interoperability
+
+function integrationExample() {
+  // Setup integration
+  // Execute workflow
+  // Handle results
+}
+```
+
+### Example 5: Error Handling
+
+```typescript
+// Proper error handling approach
+// Defensive programming patterns
+// Graceful degradation
+
+function withErrorHandling() {
+  try {
+    // Main logic
+  } catch (error) {
+    // Error recovery
+  } finally {
+    // Cleanup
   }
 }
 ```
 
-### 使用例
+### Example 6: Performance Optimization
 
 ```typescript
-it('ユーザー名を表示する', () => {
-  render(<UserCard user={createUser({ name: '山田太郎' })} />)
-  expect(screen.getByText('山田太郎')).toBeInTheDocument()
-})
+// Performance-optimized implementation
+// Shows efficiency techniques
+// Demonstrates best practices
+
+function optimizedApproach() {
+  // Efficient implementation
+  // Resource management
+  // Performance monitoring
+}
 ```
 
----
-
-## 6. テスト構造パターン
-
-### Arrange-Act-Assert (AAA)
+### Example 7: Testing
 
 ```typescript
-it('検索結果を表示する', async () => {
-  // Arrange
-  const user = userEvent.setup()
-  vi.mocked(searchApi).mockResolvedValue([{ id: '1', title: '結果1' }])
-  render(<SearchForm />)
+// Testing approach for Vitest
+// Unit test examples
+// Integration test patterns
 
-  // Act
-  await user.type(screen.getByRole('searchbox'), 'テスト')
-  await user.click(screen.getByRole('button', { name: '検索' }))
-
-  // Assert
-  expect(await screen.findByText('結果1')).toBeInTheDocument()
-})
+function testExample() {
+  // Test setup
+  // Execution
+  // Assertions
+  // Teardown
+}
 ```
 
-### 非同期テスト
+### Example 8: Production Usage
 
 ```typescript
-it('データ読み込み後にコンテンツを表示する', async () => {
-  render(<DataList />)
+// Production-ready implementation
+// Includes monitoring and logging
+// Error recovery and resilience
 
-  // findBy を優先（waitFor + getBy より簡潔）
-  expect(await screen.findByRole('list')).toBeInTheDocument()
-
-  // 複数アサーションを待つ場合は waitFor
-  await waitFor(() => {
-    expect(screen.getAllByRole('listitem')).toHaveLength(3)
-  })
-})
+function productionExample() {
+  // Production configuration
+  // Monitoring setup
+  // Error handling
+  // Logging
+}
 ```
 
----
+## Best Practices
 
-## 7. タイマーモック
+1. **Follow conventions** - Adhere to established naming and structural patterns for consistency
+2. **Configure appropriately** - Set up framework configuration that matches project requirements
+3. **Validate inputs** - Always validate and sanitize inputs before processing
+4. **Handle errors gracefully** - Implement comprehensive error handling and recovery
+5. **Document decisions** - Comment configuration choices and non-obvious implementations
+6. **Test thoroughly** - Write comprehensive tests for all functionality
+7. **Optimize performance** - Profile and optimize critical paths
+8. **Maintain security** - Follow security best practices and guidelines
+9. **Keep updated** - Regularly update framework and dependencies
+10. **Monitor production** - Implement logging and monitoring for production systems
 
-```typescript
-describe('Debounce', () => {
-  beforeEach(() => { vi.useFakeTimers() })
-  afterEach(() => { vi.useRealTimers() })
+## Common Pitfalls
 
-  it('指定時間後に関数が実行される', () => {
-    const callback = vi.fn()
-    const debounced = debounce(callback, 300)
+1. **Incorrect configuration** - Misconfiguration leads to unexpected behavior and bugs
+2. **Missing error handling** - Not handling edge cases causes production issues
+3. **Poor performance** - Not optimizing leads to scalability problems
+4. **Inadequate testing** - Insufficient test coverage misses bugs
+5. **Security vulnerabilities** - Not following security best practices exposes risks
+6. **Tight coupling** - Poor architecture makes maintenance difficult
+7. **Ignoring warnings** - Dismissing framework warnings leads to future problems
+8. **Outdated dependencies** - Using old versions exposes security risks
+9. **No monitoring** - Lack of observability makes debugging difficult
+10. **Inconsistent standards** - Team inconsistency reduces code quality
 
-    debounced()
-    expect(callback).not.toHaveBeenCalled()
+## Advanced Topics
 
-    vi.advanceTimersByTime(300)
-    expect(callback).toHaveBeenCalledOnce()
-  })
-})
+### Customization
+
+Vitest allows extensive customization for specific needs:
+
+- Custom plugins and extensions
+- Behavior modification
+- Integration adapters
+- Domain-specific adaptations
+
+### Performance Tuning
+
+Optimize Vitest performance for production:
+
+- Profiling and benchmarking
+- Resource optimization
+- Caching strategies
+- Parallel execution
+
+### CI/CD Integration
+
+Integrate Vitest into continuous integration pipelines:
+
+- Automated execution
+- Result reporting
+- Quality gates
+- Deployment integration
+
+### Troubleshooting
+
+Common issues and their solutions:
+
+- Configuration errors
+- Integration problems
+- Performance issues
+- Unexpected behavior
+
+## When to Use This Skill
+
+- Setting up Vitest in new projects
+- Configuring Vitest for specific requirements
+- Migrating to Vitest from alternatives
+- Optimizing Vitest performance
+- Implementing advanced patterns
+- Troubleshooting Vitest issues
+- Integrating Vitest with CI/CD
+- Training team members on Vitest
+- Establishing team standards
+- Maintaining existing Vitest implementations
+
+## Additional Resources
+
+### Documentation
+
+- Official Vitest documentation
+- Community guides and tutorials
+- API reference materials
+- Migration guides
+
+### Tools and Utilities
+
+- Development tools
+- Testing utilities
+- Monitoring solutions
+- Helper libraries
+
+### Community
+
+- Online forums and communities
+- Open source contributions
+- Best practice repositories
+- Example implementations
+
+## Conclusion
+
+Mastering Vitest requires understanding both fundamentals and advanced concepts. This skill provides the foundation for professional-grade usage, from initial setup through production deployment. Apply these principles consistently for best results.
+
+## Detailed Configuration Examples
+
+### Configuration Option 1
+
+Comprehensive configuration example demonstrating best practices and common patterns used in production environments.
+
+```bash
+# Detailed configuration setup
+# Includes all necessary options
+# Optimized for production use
 ```
 
----
+### Configuration Option 2
 
-## 8. 禁止パターン
+Alternative configuration approach for different use cases, showing flexibility and adaptability of the framework.
 
-### Jest API の使用禁止
-
-| 禁止 (Jest) | 代替 (Vitest) |
-|---|---|
-| `jest.mock()` | `vi.mock()` |
-| `jest.fn()` | `vi.fn()` |
-| `jest.spyOn()` | `vi.spyOn()` |
-| `jest.useFakeTimers()` | `vi.useFakeTimers()` |
-| `jest.resetAllMocks()` | `vi.resetAllMocks()` |
-| `jest.restoreAllMocks()` | `vi.restoreAllMocks()` |
-
-### fireEvent の使用禁止
-
-```typescript
-// NG
-fireEvent.click(button)
-fireEvent.change(input, { target: { value: 'text' } })
-
-// OK
-const user = userEvent.setup()
-await user.click(button)
-await user.type(input, 'text')
+```bash
+# Alternative configuration
+# Different optimization strategy
+# Suitable for specific scenarios
 ```
 
-### 実装詳細のテスト禁止
+### Configuration Option 3
 
-```typescript
-// NG: 内部状態をテスト
-expect(component.state.count).toBe(1)
+Advanced configuration for complex environments with multiple requirements and constraints.
 
-// OK: ユーザーに見える振る舞いをテスト
-expect(screen.getByText('1')).toBeInTheDocument()
-await user.click(screen.getByRole('button', { name: '増加' }))
-expect(screen.getByText('2')).toBeInTheDocument()
+```bash
+# Advanced configuration
+# Handles complex scenarios
+# Production-ready setup
 ```
 
-### getByTestId の安易な使用禁止
+## Advanced Usage Patterns
 
-```typescript
-// NG: 他のクエリで取得可能なのに testid を使う
-screen.getByTestId('submit-button')
+### Pattern 1: Modular Organization
 
-// OK: アクセシビリティクエリを優先
-screen.getByRole('button', { name: '送信' })
-```
+Organize your setup in a modular way to improve maintainability and scalability across large projects.
+
+Implementation details:
+
+- Separate concerns appropriately
+- Use composition over inheritance
+- Follow single responsibility principle
+- Maintain clear interfaces
+
+### Pattern 2: Performance Optimization
+
+Optimize for performance in production environments with proven strategies and techniques.
+
+Key considerations:
+
+- Profile before optimizing
+- Focus on bottlenecks
+- Cache appropriately
+- Monitor in production
+
+### Pattern 3: Error Recovery
+
+Implement robust error recovery mechanisms to handle failures gracefully.
+
+Recovery strategies:
+
+- Graceful degradation
+- Retry with backoff
+- Circuit breaker pattern
+- Comprehensive logging
+
+### Pattern 4: Testing Strategy
+
+Comprehensive testing approach ensuring code quality and reliability.
+
+Testing layers:
+
+- Unit tests for components
+- Integration tests for workflows
+- End-to-end tests for user scenarios
+- Performance tests for scalability
+
+## Integration Strategies
+
+### Integration with CI/CD
+
+Seamless integration into continuous integration and deployment pipelines.
+
+Steps:
+
+1. Configure pipeline
+2. Set up automation
+3. Define quality gates
+4. Monitor execution
+
+### Integration with Development Tools
+
+Connect with popular development tools and IDEs for improved workflow.
+
+Tools:
+
+- IDE plugins and extensions
+- CLI tools and utilities
+- Build system integration
+- Version control hooks
+
+### Integration with Monitoring
+
+Implement monitoring and observability for production systems.
+
+Monitoring aspects:
+
+- Performance metrics
+- Error tracking
+- Usage analytics
+- Health checks
+
+## Team Practices
+
+### Establishing Standards
+
+Create and maintain consistent standards across the team.
+
+Standards to define:
+
+- Naming conventions
+- Code organization
+- Documentation requirements
+- Review processes
+
+### Onboarding Process
+
+Streamline onboarding for new team members.
+
+Onboarding steps:
+
+- Initial setup guide
+- Training materials
+- Practice exercises
+- Mentorship program
+
+### Code Review Guidelines
+
+Effective code review practices for quality assurance.
+
+Review checklist:
+
+- Correctness
+- Performance
+- Security
+- Maintainability
+
+## Troubleshooting Guide
+
+### Common Issue 1
+
+Detailed troubleshooting steps for frequently encountered problem.
+
+Resolution steps:
+
+1. Identify symptoms
+2. Check configuration
+3. Verify dependencies
+4. Test solution
+
+### Common Issue 2
+
+Another common issue with comprehensive resolution approach.
+
+Diagnostic steps:
+
+1. Reproduce issue
+2. Gather logs
+3. Analyze data
+4. Apply fix
+
+### Common Issue 3
+
+Third common scenario with clear resolution path.
+
+Investigation process:
+
+1. Understand context
+2. Review recent changes
+3. Test hypotheses
+4. Implement solution

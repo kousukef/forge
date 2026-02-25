@@ -1,496 +1,494 @@
 ---
 name: architecture-patterns
-description: "When designing module boundaries, defining layer dependencies, or structuring domain logic in TypeScript projects. Provides practical SOLID patterns, DDD building blocks (Bounded Context, Aggregate, Repository), ADR templates, layered architecture guidelines, and dependency inversion examples with TypeScript code. MUST be invoked before creating new modules, services, or architectural boundaries."
+description: Implement proven backend architecture patterns including Clean Architecture, Hexagonal Architecture, and Domain-Driven Design. Use when architecting complex backend systems or refactoring existing applications for better maintainability.
 ---
 
-# ソフトウェアアーキテクチャパターン
+# Architecture Patterns
 
-## 原則
+Master proven backend architecture patterns including Clean Architecture, Hexagonal Architecture, and Domain-Driven Design to build maintainable, testable, and scalable systems.
 
-アーキテクチャの目的は「変更コストを最小化する構造」を作ること。
-学術的な定義ではなく、TypeScript プロジェクトで即座に適用できる実践パターンを提供する。
-`coding-standards.md` が「何を守るか」を定義するのに対し、このスキルは「どう構造化するか」を具体的コードで示す。
+## When to Use This Skill
 
----
+- Designing new backend systems from scratch
+- Refactoring monolithic applications for better maintainability
+- Establishing architecture standards for your team
+- Migrating from tightly coupled to loosely coupled architectures
+- Implementing domain-driven design principles
+- Creating testable and mockable codebases
+- Planning microservices decomposition
 
-## SOLID 原則（実践編）
+## Core Concepts
 
-### Single Responsibility: 変更理由を1つに絞る
+### 1. Clean Architecture (Uncle Bob)
 
-```typescript
-// Bad: ユーザー検証とメール送信が混在
-class UserService {
-  async register(input: UserInput) {
-    if (!input.email.includes("@")) throw new ValidationError("Invalid email");
-    const user = await this.db.user.create({ data: input });
-    await this.sendWelcomeEmail(user.email); // 別の変更理由
-    return user;
-  }
-  private async sendWelcomeEmail(email: string) { /* ... */ }
-}
+**Layers (dependency flows inward):**
 
-// Good: 責務を分離し、変更理由を1つに
-class UserRegistrationService {
-  constructor(
-    private readonly userRepo: UserRepository,
-    private readonly notifier: UserNotifier,
-  ) {}
+- **Entities**: Core business models
+- **Use Cases**: Application business rules
+- **Interface Adapters**: Controllers, presenters, gateways
+- **Frameworks & Drivers**: UI, database, external services
 
-  async register(input: UserInput): Promise<User> {
-    const user = await this.userRepo.create(input);
-    await this.notifier.onUserCreated(user);
-    return user;
-  }
-}
-```
+**Key Principles:**
 
-**判定基準**: 「このクラスを変更する理由は何か」を列挙し、2つ以上なら分割を検討する。
+- Dependencies point inward
+- Inner layers know nothing about outer layers
+- Business logic independent of frameworks
+- Testable without UI, database, or external services
 
-### Open/Closed: 拡張は追加、既存コードは変更しない
+### 2. Hexagonal Architecture (Ports and Adapters)
 
-```typescript
-// Bad: 新しい通知チャネル追加のたびに既存コードを修正
-function notify(user: User, channel: "email" | "slack" | "sms") {
-  if (channel === "email") { /* ... */ }
-  else if (channel === "slack") { /* ... */ }
-  else if (channel === "sms") { /* ... */ }
-}
+**Components:**
 
-// Good: Strategy パターンで拡張に開く
-interface NotificationChannel {
-  send(user: User, message: string): Promise<void>;
-}
+- **Domain Core**: Business logic
+- **Ports**: Interfaces defining interactions
+- **Adapters**: Implementations of ports (database, REST, message queue)
 
-class EmailChannel implements NotificationChannel {
-  async send(user: User, message: string): Promise<void> { /* ... */ }
-}
+**Benefits:**
 
-class SlackChannel implements NotificationChannel {
-  async send(user: User, message: string): Promise<void> { /* ... */ }
-}
+- Swap implementations easily (mock for testing)
+- Technology-agnostic core
+- Clear separation of concerns
 
-// 新チャネル追加時は新クラスを作るだけ。既存コードは変更不要。
-class NotificationService {
-  constructor(private readonly channels: NotificationChannel[]) {}
+### 3. Domain-Driven Design (DDD)
 
-  async notifyAll(user: User, message: string): Promise<void> {
-    await Promise.all(this.channels.map((ch) => ch.send(user, message)));
-  }
-}
-```
+**Strategic Patterns:**
 
-### Liskov Substitution + Interface Segregation: 型階層を正しく設計する
+- **Bounded Contexts**: Separate models for different domains
+- **Context Mapping**: How contexts relate
+- **Ubiquitous Language**: Shared terminology
 
-LSP: 派生型が基底型の契約を破壊してはならない。ISP: クライアントが使わないメソッドに依存させない。この2つは連動する。
+**Tactical Patterns:**
 
-```typescript
-// Bad: 巨大インターフェースに全操作を詰め込む → 実装側で例外を投げる LSP 違反が発生
-interface DataStore<T> {
-  findById(id: string): Promise<T | null>;
-  save(entity: T): Promise<void>;
-  delete(id: string): Promise<void>; // CacheStore には不要
-}
+- **Entities**: Objects with identity
+- **Value Objects**: Immutable objects defined by attributes
+- **Aggregates**: Consistency boundaries
+- **Repositories**: Data access abstraction
+- **Domain Events**: Things that happened
 
-// Good: 用途ごとにインターフェースを分割 → LSP 違反を構造的に防ぐ
-interface Readable<T> {
-  findById(id: string): Promise<T | null>;
-}
-interface Writable<T> {
-  save(entity: T): Promise<void>;
-}
-interface Deletable {
-  delete(id: string): Promise<void>;
-}
-// CacheStore は Readable + Writable のみ実装。delete を持たないので違反しようがない
-```
+## Clean Architecture Pattern
 
-### Dependency Inversion: 上位モジュールが抽象を所有する
-
-```typescript
-// Bad: ドメイン層が Prisma に直接依存
-import { PrismaClient } from "@prisma/client";
-
-class OrderService {
-  constructor(private readonly prisma: PrismaClient) {}
-
-  async getOrder(id: string) {
-    return this.prisma.order.findUnique({ where: { id } });
-  }
-}
-
-// Good: ドメイン層がインターフェースを定義し、インフラ層が実装
-// --- domain/order/order-repository.ts ---
-interface OrderRepository {
-  findById(id: string): Promise<Order | null>;
-  save(order: Order): Promise<void>;
-}
-
-// --- domain/order/order-service.ts ---
-class OrderService {
-  constructor(private readonly orderRepo: OrderRepository) {}
-
-  async getOrder(id: string): Promise<Order | null> {
-    return this.orderRepo.findById(id);
-  }
-}
-
-// --- infrastructure/prisma/prisma-order-repository.ts ---
-class PrismaOrderRepository implements OrderRepository {
-  constructor(private readonly prisma: PrismaClient) {}
-
-  async findById(id: string): Promise<Order | null> {
-    const data = await this.prisma.order.findUnique({ where: { id } });
-    return data ? this.toDomain(data) : null;
-  }
-
-  async save(order: Order): Promise<void> {
-    await this.prisma.order.upsert({
-      where: { id: order.id },
-      create: this.toPersistence(order),
-      update: this.toPersistence(order),
-    });
-  }
-}
-```
-
-**依存の方向**: `domain/ ← application/ ← infrastructure/`（矢印は「依存される側」を指す）
-
----
-
-## DDD 基本概念
-
-### Bounded Context: モジュール境界の設計
-
-Bounded Context はドメインモデルの適用範囲を定義する。同じ「ユーザー」でも文脈によって異なるモデルになる。
+### Directory Structure
 
 ```
-認証コンテキスト          注文コンテキスト          請求コンテキスト
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│ AuthUser        │     │ Customer        │     │ BillingAccount  │
-│ - email         │     │ - customerId    │     │ - accountId     │
-│ - passwordHash  │     │ - shippingAddr  │     │ - paymentMethod │
-│ - roles[]       │     │ - orderHistory  │     │ - invoices      │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
+app/
+├── domain/           # Entities & business rules
+│   ├── entities/
+│   │   ├── user.py
+│   │   └── order.py
+│   ├── value_objects/
+│   │   ├── email.py
+│   │   └── money.py
+│   └── interfaces/   # Abstract interfaces
+│       ├── user_repository.py
+│       └── payment_gateway.py
+├── use_cases/        # Application business rules
+│   ├── create_user.py
+│   ├── process_order.py
+│   └── send_notification.py
+├── adapters/         # Interface implementations
+│   ├── repositories/
+│   │   ├── postgres_user_repository.py
+│   │   └── redis_cache_repository.py
+│   ├── controllers/
+│   │   └── user_controller.py
+│   └── gateways/
+│       ├── stripe_payment_gateway.py
+│       └── sendgrid_email_gateway.py
+└── infrastructure/   # Framework & external concerns
+    ├── database.py
+    ├── config.py
+    └── logging.py
 ```
 
-**ディレクトリ構造への反映**:
+### Implementation Example
 
-```
-src/
-├── modules/
-│   ├── auth/           # 認証コンテキスト
-│   │   ├── domain/
-│   │   ├── application/
-│   │   └── infrastructure/
-│   ├── order/          # 注文コンテキスト
-│   │   ├── domain/
-│   │   ├── application/
-│   │   └── infrastructure/
-│   └── billing/        # 請求コンテキスト
-│       ├── domain/
-│       ├── application/
-│       └── infrastructure/
-└── shared/             # 共有カーネル（最小限に保つ）
-    ├── types/
-    └── utils/
-```
+```python
+# domain/entities/user.py
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Optional
 
-**コンテキスト間の通信**: 直接インポートせず、イベントまたは明示的な Anti-Corruption Layer を使う。
+@dataclass
+class User:
+    """Core user entity - no framework dependencies."""
+    id: str
+    email: str
+    name: str
+    created_at: datetime
+    is_active: bool = True
 
-```typescript
-// Bad: 注文コンテキストが認証コンテキストの内部型に直接依存
-import { AuthUser } from "@/modules/auth/domain/auth-user";
+    def deactivate(self):
+        """Business rule: deactivating user."""
+        self.is_active = False
 
-// Good: 注文コンテキスト側で必要な型を定義
-// --- modules/order/domain/types.ts ---
-type CustomerId = string; // 注文コンテキストにとっての「顧客」は ID だけで十分
-```
+    def can_place_order(self) -> bool:
+        """Business rule: active users can order."""
+        return self.is_active
 
-### Aggregate: 整合性境界の単位
+# domain/interfaces/user_repository.py
+from abc import ABC, abstractmethod
+from typing import Optional, List
+from domain.entities.user import User
 
-Aggregate はトランザクション整合性を保証する単位。外部から Aggregate 内部のエンティティを直接操作しない。
+class IUserRepository(ABC):
+    """Port: defines contract, no implementation."""
 
-```typescript
-// --- domain/order/order.ts ---
-class Order {
-  private constructor(
-    readonly id: string,
-    private _status: OrderStatus,
-    private _items: OrderItem[],
-    private _totalAmount: number,
-  ) {}
+    @abstractmethod
+    async def find_by_id(self, user_id: str) -> Optional[User]:
+        pass
 
-  static create(customerId: string, items: OrderItemInput[]): Order {
-    if (items.length === 0) {
-      throw new DomainError("Order must have at least one item");
-    }
-    const orderItems = items.map(OrderItem.create);
-    const total = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
-    return new Order(generateId(), "pending", orderItems, total);
-  }
+    @abstractmethod
+    async def find_by_email(self, email: str) -> Optional[User]:
+        pass
 
-  addItem(input: OrderItemInput): void {
-    if (this._status !== "pending") {
-      throw new DomainError("Cannot modify confirmed order");
-    }
-    const item = OrderItem.create(input);
-    this._items.push(item);
-    this.recalculateTotal();
-  }
+    @abstractmethod
+    async def save(self, user: User) -> User:
+        pass
 
-  confirm(): void {
-    if (this._items.length === 0) {
-      throw new DomainError("Cannot confirm empty order");
-    }
-    this._status = "confirmed";
-  }
+    @abstractmethod
+    async def delete(self, user_id: str) -> bool:
+        pass
 
-  private recalculateTotal(): void {
-    this._totalAmount = this._items.reduce((sum, i) => sum + i.subtotal, 0);
-  }
-}
-```
+# use_cases/create_user.py
+from domain.entities.user import User
+from domain.interfaces.user_repository import IUserRepository
+from dataclasses import dataclass
+from datetime import datetime
+import uuid
 
-**ルール**:
-- Aggregate Root（Order）経由でのみ内部状態を変更する
-- Aggregate 間の参照は ID のみ（オブジェクト参照しない）
-- 1トランザクション = 1 Aggregate の更新
+@dataclass
+class CreateUserRequest:
+    email: str
+    name: str
 
-### Repository パターン: 永続化の抽象化
+@dataclass
+class CreateUserResponse:
+    user: User
+    success: bool
+    error: Optional[str] = None
 
-```typescript
-// --- domain/order/order-repository.ts ---
-interface OrderRepository {
-  findById(id: string): Promise<Order | null>;
-  findByCustomerId(customerId: string): Promise<Order[]>;
-  save(order: Order): Promise<void>;
-}
+class CreateUserUseCase:
+    """Use case: orchestrates business logic."""
 
-// --- application/order/create-order-use-case.ts ---
-class CreateOrderUseCase {
-  constructor(private readonly orderRepo: OrderRepository) {}
+    def __init__(self, user_repository: IUserRepository):
+        self.user_repository = user_repository
 
-  async execute(input: CreateOrderInput): Promise<Order> {
-    const order = Order.create(input.customerId, input.items);
-    await this.orderRepo.save(order);
-    return order;
-  }
-}
-```
+    async def execute(self, request: CreateUserRequest) -> CreateUserResponse:
+        # Business validation
+        existing = await self.user_repository.find_by_email(request.email)
+        if existing:
+            return CreateUserResponse(
+                user=None,
+                success=False,
+                error="Email already exists"
+            )
 
-**Repository の責務**: ドメインオブジェクトの保存・取得のみ。クエリロジックはここに、ビジネスロジックはドメインに。
+        # Create entity
+        user = User(
+            id=str(uuid.uuid4()),
+            email=request.email,
+            name=request.name,
+            created_at=datetime.now(),
+            is_active=True
+        )
 
----
+        # Persist
+        saved_user = await self.user_repository.save(user)
 
-## ADR（Architecture Decision Records）
+        return CreateUserResponse(
+            user=saved_user,
+            success=True
+        )
 
-重要なアーキテクチャ判断を記録し、将来の「なぜこうなっているのか」に答える。
+# adapters/repositories/postgres_user_repository.py
+from domain.interfaces.user_repository import IUserRepository
+from domain.entities.user import User
+from typing import Optional
+import asyncpg
 
-### テンプレート
+class PostgresUserRepository(IUserRepository):
+    """Adapter: PostgreSQL implementation."""
 
-```markdown
-# ADR-XXXX: [タイトル]
+    def __init__(self, pool: asyncpg.Pool):
+        self.pool = pool
 
-## ステータス
-proposed | accepted | deprecated | superseded by ADR-YYYY
+    async def find_by_id(self, user_id: str) -> Optional[User]:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM users WHERE id = $1", user_id
+            )
+            return self._to_entity(row) if row else None
 
-## コンテキスト
-[判断が必要になった背景・状況]
+    async def find_by_email(self, email: str) -> Optional[User]:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM users WHERE email = $1", email
+            )
+            return self._to_entity(row) if row else None
 
-## 決定
-[選択した方針とその理由]
+    async def save(self, user: User) -> User:
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO users (id, email, name, created_at, is_active)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (id) DO UPDATE
+                SET email = $2, name = $3, is_active = $5
+                """,
+                user.id, user.email, user.name, user.created_at, user.is_active
+            )
+            return user
 
-## 却下した選択肢
-- [選択肢A]: [却下理由]
-- [選択肢B]: [却下理由]
+    async def delete(self, user_id: str) -> bool:
+        async with self.pool.acquire() as conn:
+            result = await conn.execute(
+                "DELETE FROM users WHERE id = $1", user_id
+            )
+            return result == "DELETE 1"
 
-## 影響
-- [正の影響]
-- [負の影響・トレードオフ]
-```
+    def _to_entity(self, row) -> User:
+        """Map database row to entity."""
+        return User(
+            id=row["id"],
+            email=row["email"],
+            name=row["name"],
+            created_at=row["created_at"],
+            is_active=row["is_active"]
+        )
 
-### ADR を書くべきタイミング
+# adapters/controllers/user_controller.py
+from fastapi import APIRouter, Depends, HTTPException
+from use_cases.create_user import CreateUserUseCase, CreateUserRequest
+from pydantic import BaseModel
 
-- 新しいモジュール・サービスの追加
-- 外部ライブラリの選定（同等の選択肢が複数ある場合）
-- データモデルの重要な設計判断
-- レイヤー間の通信方式の決定
-- パフォーマンスとのトレードオフを含む設計判断
+router = APIRouter()
 
-### 配置場所
+class CreateUserDTO(BaseModel):
+    email: str
+    name: str
 
-```
-docs/
-└── adr/
-    ├── 0001-use-prisma-as-orm.md
-    ├── 0002-app-router-only.md
-    └── 0003-module-based-structure.md
-```
+@router.post("/users")
+async def create_user(
+    dto: CreateUserDTO,
+    use_case: CreateUserUseCase = Depends(get_create_user_use_case)
+):
+    """Controller: handles HTTP concerns only."""
+    request = CreateUserRequest(email=dto.email, name=dto.name)
+    response = await use_case.execute(request)
 
----
+    if not response.success:
+        raise HTTPException(status_code=400, detail=response.error)
 
-## モジュール境界設計
-
-### 境界の判定基準
-
-| 基準 | 分離すべき | 同一モジュールでOK |
-|---|---|---|
-| 変更頻度 | 異なる | 同じ |
-| チーム所有権 | 別チーム | 同一チーム |
-| ドメイン概念 | 異なるコンテキスト | 同一コンテキスト |
-| デプロイ独立性 | 独立デプロイしたい | 一緒でよい |
-
-### 公開 API の設計
-
-各モジュールは `index.ts` で公開インターフェースを明示する。
-
-```typescript
-// --- modules/order/index.ts ---
-// 公開する型
-export type { Order } from "./domain/order";
-export type { CreateOrderInput } from "./application/types";
-
-// 公開するユースケース
-export { CreateOrderUseCase } from "./application/create-order-use-case";
-export { GetOrderUseCase } from "./application/get-order-use-case";
-
-// 内部実装は公開しない
-// PrismaOrderRepository, OrderItem 等は export しない
+    return {"user": response.user}
 ```
 
-**ルール**: モジュール外からの `import` は必ず `index.ts` 経由にする。内部パスへの直接アクセスは禁止。
+## Hexagonal Architecture Pattern
 
----
+```python
+# Core domain (hexagon center)
+class OrderService:
+    """Domain service - no infrastructure dependencies."""
 
-## レイヤードアーキテクチャ
+    def __init__(
+        self,
+        order_repository: OrderRepositoryPort,
+        payment_gateway: PaymentGatewayPort,
+        notification_service: NotificationPort
+    ):
+        self.orders = order_repository
+        self.payments = payment_gateway
+        self.notifications = notification_service
 
-### 4層構造
+    async def place_order(self, order: Order) -> OrderResult:
+        # Business logic
+        if not order.is_valid():
+            return OrderResult(success=False, error="Invalid order")
 
-```
-┌─────────────────────────────────────┐
-│  Presentation (UI / API Routes)     │  ← フレームワーク依存OK
-├─────────────────────────────────────┤
-│  Application (Use Cases)            │  ← オーケストレーション
-├─────────────────────────────────────┤
-│  Domain (Entities, Value Objects)   │  ← ビジネスルール（純粋）
-├─────────────────────────────────────┤
-│  Infrastructure (DB, External API)  │  ← 技術的詳細
-└─────────────────────────────────────┘
-```
+        # Use ports (interfaces)
+        payment = await self.payments.charge(
+            amount=order.total,
+            customer=order.customer_id
+        )
 
-### 各層の責務と依存ルール
+        if not payment.success:
+            return OrderResult(success=False, error="Payment failed")
 
-| 層 | 責務 | 依存してよい層 | 配置例 |
-|---|---|---|---|
-| Presentation | リクエスト処理、レスポンス整形 | Application | `src/app/api/`, `src/app/**/page.tsx` |
-| Application | ユースケース実行、トランザクション管理 | Domain | `src/modules/*/application/` |
-| Domain | ビジネスルール、バリデーション | なし（自己完結） | `src/modules/*/domain/` |
-| Infrastructure | DB操作、外部API呼び出し | Domain（インターフェース実装） | `src/modules/*/infrastructure/` |
+        order.mark_as_paid()
+        saved_order = await self.orders.save(order)
 
-### 実践例: Next.js App Router での適用
+        await self.notifications.send(
+            to=order.customer_email,
+            subject="Order confirmed",
+            body=f"Order {order.id} confirmed"
+        )
 
-```typescript
-// Presentation: src/app/api/orders/route.ts
-export async function POST(request: Request) {
-  const input = orderInputSchema.parse(await request.json());
-  const order = await createOrderUseCase.execute(input);
-  return Response.json(order, { status: 201 });
-}
+        return OrderResult(success=True, order=saved_order)
 
-// Application: src/modules/order/application/create-order-use-case.ts
-class CreateOrderUseCase {
-  constructor(private readonly orderRepo: OrderRepository) {}
-  async execute(input: CreateOrderInput): Promise<Order> {
-    const order = Order.create(input.customerId, input.items);
-    await this.orderRepo.save(order);
-    return order;
-  }
-}
+# Ports (interfaces)
+class OrderRepositoryPort(ABC):
+    @abstractmethod
+    async def save(self, order: Order) -> Order:
+        pass
 
-// Domain: 純粋なビジネスロジック。フレームワーク依存なし。
-// Infrastructure: Prisma を使った OrderRepository の実装。
-```
+class PaymentGatewayPort(ABC):
+    @abstractmethod
+    async def charge(self, amount: Money, customer: str) -> PaymentResult:
+        pass
 
----
+class NotificationPort(ABC):
+    @abstractmethod
+    async def send(self, to: str, subject: str, body: str):
+        pass
 
-## 依存性注入の実践
+# Adapters (implementations)
+class StripePaymentAdapter(PaymentGatewayPort):
+    """Primary adapter: connects to Stripe API."""
 
-TypeScript プロジェクトでは DI コンテナなしでも、コンストラクタ注入で十分なケースが多い。
+    def __init__(self, api_key: str):
+        self.stripe = stripe
+        self.stripe.api_key = api_key
 
-### 手動 DI（Composition Root パターン）
+    async def charge(self, amount: Money, customer: str) -> PaymentResult:
+        try:
+            charge = self.stripe.Charge.create(
+                amount=amount.cents,
+                currency=amount.currency,
+                customer=customer
+            )
+            return PaymentResult(success=True, transaction_id=charge.id)
+        except stripe.error.CardError as e:
+            return PaymentResult(success=False, error=str(e))
 
-```typescript
-// --- src/composition-root.ts ---
-import { PrismaClient } from "@prisma/client";
-import { PrismaOrderRepository } from "@/modules/order/infrastructure/prisma-order-repo";
-import { CreateOrderUseCase } from "@/modules/order/application/create-order-use-case";
-import { EmailNotifier } from "@/modules/notification/infrastructure/email-notifier";
+class MockPaymentAdapter(PaymentGatewayPort):
+    """Test adapter: no external dependencies."""
 
-const prisma = new PrismaClient();
-
-// 依存関係の組み立てを1箇所に集約
-export const orderRepo = new PrismaOrderRepository(prisma);
-export const notifier = new EmailNotifier();
-export const createOrderUseCase = new CreateOrderUseCase(orderRepo);
-```
-
-**ルール**: 依存の組み立て（`new` の呼び出し）はアプリケーションのエントリーポイント付近（Composition Root）に集約する。ドメイン層やアプリケーション層では `new` で具象クラスを生成しない。
-
-### テスト時の差し替え
-
-```typescript
-// テスト用のインメモリ実装
-class InMemoryOrderRepository implements OrderRepository {
-  private orders: Map<string, Order> = new Map();
-
-  async findById(id: string): Promise<Order | null> {
-    return this.orders.get(id) ?? null;
-  }
-
-  async save(order: Order): Promise<void> {
-    this.orders.set(order.id, order);
-  }
-}
-
-// テストでは InMemory 実装を注入
-describe("CreateOrderUseCase", () => {
-  it("should create an order", async () => {
-    const repo = new InMemoryOrderRepository();
-    const useCase = new CreateOrderUseCase(repo);
-    const order = await useCase.execute(validInput);
-    expect(order).toBeDefined();
-  });
-});
+    async def charge(self, amount: Money, customer: str) -> PaymentResult:
+        return PaymentResult(success=True, transaction_id="mock-123")
 ```
 
----
+## Domain-Driven Design Pattern
 
-## アンチパターン
+```python
+# Value Objects (immutable)
+from dataclasses import dataclass
+from typing import Optional
 
-| パターン | 問題 | 対策 |
-|---|---|---|
-| God Class | 1クラスに全責務が集中 | SRP に従い分割 |
-| Circular Dependency | モジュール間の循環参照 | 依存逆転で解消 |
-| Anemic Domain Model | ドメインオブジェクトがデータだけ | ビジネスロジックをドメインに移動 |
-| Leaky Abstraction | インフラの詳細がドメインに漏れる | Repository インターフェースで隔離 |
-| Premature Abstraction | 1つしか実装がないのにインターフェース | 2つ目の実装が必要になってから抽象化 |
-| Shared Mutable State | グローバル変数やシングルトンの濫用 | コンストラクタ注入で明示的に渡す |
+@dataclass(frozen=True)
+class Email:
+    """Value object: validated email."""
+    value: str
 
----
+    def __post_init__(self):
+        if "@" not in self.value:
+            raise ValueError("Invalid email")
 
-## 適用判断ガイド
+@dataclass(frozen=True)
+class Money:
+    """Value object: amount with currency."""
+    amount: int  # cents
+    currency: str
 
-全プロジェクトで完全な DDD を適用する必要はない。規模に応じて段階的に導入する。
+    def add(self, other: "Money") -> "Money":
+        if self.currency != other.currency:
+            raise ValueError("Currency mismatch")
+        return Money(self.amount + other.amount, self.currency)
 
-| プロジェクト規模 | 推奨アプローチ |
-|---|---|
-| 小規模（PoC、数画面） | レイヤー分離のみ。DDD は不要 |
-| 中規模（10+ 画面、複数ドメイン） | モジュール分割 + Repository パターン |
-| 大規模（複数チーム、複雑なドメイン） | Bounded Context + Aggregate + ADR |
+# Entities (with identity)
+class Order:
+    """Entity: has identity, mutable state."""
 
----
+    def __init__(self, id: str, customer: Customer):
+        self.id = id
+        self.customer = customer
+        self.items: List[OrderItem] = []
+        self.status = OrderStatus.PENDING
+        self._events: List[DomainEvent] = []
 
-## Applicability
+    def add_item(self, product: Product, quantity: int):
+        """Business logic in entity."""
+        item = OrderItem(product, quantity)
+        self.items.append(item)
+        self._events.append(ItemAddedEvent(self.id, item))
 
-- **フェーズ**: design, implementation, review
-- **ドメイン**: universal（全技術ドメインに適用。特にモジュール設計・レイヤー設計時）
+    def total(self) -> Money:
+        """Calculated property."""
+        return sum(item.subtotal() for item in self.items)
+
+    def submit(self):
+        """State transition with business rules."""
+        if not self.items:
+            raise ValueError("Cannot submit empty order")
+        if self.status != OrderStatus.PENDING:
+            raise ValueError("Order already submitted")
+
+        self.status = OrderStatus.SUBMITTED
+        self._events.append(OrderSubmittedEvent(self.id))
+
+# Aggregates (consistency boundary)
+class Customer:
+    """Aggregate root: controls access to entities."""
+
+    def __init__(self, id: str, email: Email):
+        self.id = id
+        self.email = email
+        self._addresses: List[Address] = []
+        self._orders: List[str] = []  # Order IDs, not full objects
+
+    def add_address(self, address: Address):
+        """Aggregate enforces invariants."""
+        if len(self._addresses) >= 5:
+            raise ValueError("Maximum 5 addresses allowed")
+        self._addresses.append(address)
+
+    @property
+    def primary_address(self) -> Optional[Address]:
+        return next((a for a in self._addresses if a.is_primary), None)
+
+# Domain Events
+@dataclass
+class OrderSubmittedEvent:
+    order_id: str
+    occurred_at: datetime = field(default_factory=datetime.now)
+
+# Repository (aggregate persistence)
+class OrderRepository:
+    """Repository: persist/retrieve aggregates."""
+
+    async def find_by_id(self, order_id: str) -> Optional[Order]:
+        """Reconstitute aggregate from storage."""
+        pass
+
+    async def save(self, order: Order):
+        """Persist aggregate and publish events."""
+        await self._persist(order)
+        await self._publish_events(order._events)
+        order._events.clear()
+```
+
+## Resources
+
+- **references/clean-architecture-guide.md**: Detailed layer breakdown
+- **references/hexagonal-architecture-guide.md**: Ports and adapters patterns
+- **references/ddd-tactical-patterns.md**: Entities, value objects, aggregates
+- **assets/clean-architecture-template/**: Complete project structure
+- **assets/ddd-examples/**: Domain modeling examples
+
+## Best Practices
+
+1. **Dependency Rule**: Dependencies always point inward
+2. **Interface Segregation**: Small, focused interfaces
+3. **Business Logic in Domain**: Keep frameworks out of core
+4. **Test Independence**: Core testable without infrastructure
+5. **Bounded Contexts**: Clear domain boundaries
+6. **Ubiquitous Language**: Consistent terminology
+7. **Thin Controllers**: Delegate to use cases
+8. **Rich Domain Models**: Behavior with data
+
+## Common Pitfalls
+
+- **Anemic Domain**: Entities with only data, no behavior
+- **Framework Coupling**: Business logic depends on frameworks
+- **Fat Controllers**: Business logic in controllers
+- **Repository Leakage**: Exposing ORM objects
+- **Missing Abstractions**: Concrete dependencies in core
+- **Over-Engineering**: Clean architecture for simple CRUD
