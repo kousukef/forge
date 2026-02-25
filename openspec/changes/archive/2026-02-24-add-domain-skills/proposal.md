@@ -61,7 +61,7 @@ Forge システムに **Domain Skills**（技術ドメイン固有のベスト�
 
 | Skill | スコープ | ソース |
 |---|---|---|
-| `ui-ux-pro-max-skill` | デザインシステム自動推薦（50+ スタイル、97 カラーパレット、57 フォントペアリング、99 UX ガイドライン）。SKILL.md にルール記載 + MCP プラグインでデザインシステム検索 | nextlevelbuilder/ui-ux-pro-max-skill |
+| `ui-ux-pro-max` | デザインシステム自動推薦（50+ スタイル、97 カラーパレット、57 フォントペアリング、99 UX ガイドライン）。SKILL.md にルール記載 + MCP プラグインでデザインシステム検索 | nextlevelbuilder/ui-ux-pro-max |
 
 #### 8. 関連ファイル更新
 
@@ -80,7 +80,7 @@ Forge システムに **Domain Skills**（技術ドメイン固有のベスト�
 - Pages Router のルール: App Router のみ使用 -- YAGNI
 - Jest のパターン: Vitest を使用 -- YAGNI
 - 生 SQL / Drizzle / TypeORM のパターン: Prisma のみ使用 -- YAGNI
-- MCP プラグインの新規開発: ui-ux-pro-max-skill は既存プラグインを導入するのみ -- YAGNI
+- MCP プラグインの新規開発: ui-ux-pro-max は既存プラグインを導入するのみ -- YAGNI
 
 ## 未解決の疑問点（Open Questions）
 

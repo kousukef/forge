@@ -15,16 +15,16 @@
 ## タスク
 
 ### Task 1: 外部リポジトリの clone と確認（推定: 3分）
-- **対象ファイル**: `/tmp/vercel-agent-skills/`, `/tmp/supabase-agent-skills/`, `/tmp/anthropics-skills/`, `/tmp/hashicorp-agent-skills/`, `/tmp/ui-ux-pro-max-skill/`, `/tmp/everything-claude-code/`
+- **対象ファイル**: `/tmp/vercel-agent-skills/`, `/tmp/supabase-agent-skills/`, `/tmp/anthropics-skills/`, `/tmp/hashicorp-agent-skills/`, `/tmp/ui-ux-pro-max/`, `/tmp/everything-claude-code/`
 - **やること**:
   1. `git clone --depth 1 https://github.com/vercel-labs/agent-skills /tmp/vercel-agent-skills`
   2. `git clone --depth 1 https://github.com/supabase/agent-skills /tmp/supabase-agent-skills`
   3. `git clone --depth 1 https://github.com/anthropics/skills /tmp/anthropics-skills`
   4. `git clone --depth 1 https://github.com/hashicorp/agent-skills /tmp/hashicorp-agent-skills`
-  5. `git clone --depth 1 https://github.com/nextlevelbuilder/ui-ux-pro-max-skill /tmp/ui-ux-pro-max-skill`
+  5. `git clone --depth 1 https://github.com/nextlevelbuilder/ui-ux-pro-max /tmp/ui-ux-pro-max`
   6. `git clone --depth 1 https://github.com/affaan-m/everything-claude-code /tmp/everything-claude-code`
   7. 各リポジトリの主要ファイルを確認
-- **検証方法**: `ls /tmp/{vercel-agent-skills,supabase-agent-skills,anthropics-skills,hashicorp-agent-skills,ui-ux-pro-max-skill,everything-claude-code}` が成功する
+- **検証方法**: `ls /tmp/{vercel-agent-skills,supabase-agent-skills,anthropics-skills,hashicorp-agent-skills,ui-ux-pro-max,everything-claude-code}` が成功する
 - **関連要件**: REQ-001, REQ-002, REQ-008
 - **関連スペック**: `specs/domain-skills/delta-spec.md#REQ-001`
 - **依存**: なし
@@ -143,9 +143,9 @@
 - **関連スペック**: `specs/domain-skills/delta-spec.md#REQ-008`, `specs/domain-skills/delta-spec.md#REQ-010`
 - **依存**: Task 2
 
-### Task 16: ui-ux-pro-max-skill SKILL.md 作成 + MCP 設定（推定: 5分）
-- **対象ファイル**: `~/.claude/skills/ui-ux-pro-max-skill/SKILL.md`（新規）, MCP 設定ファイル
-- **やること**: デザインシステム原則・UXガイドラインを SKILL.md に記載 + MCP プラグインのインストール。ソース: nextlevelbuilder/ui-ux-pro-max-skill。カラーパレット選定指針、フォントペアリング、UX ガイドライン、MCP 検索コマンドの使用方法。MCP なしでも動作する設計
+### Task 16: ui-ux-pro-max SKILL.md 作成 + MCP 設定（推定: 5分）
+- **対象ファイル**: `~/.claude/skills/ui-ux-pro-max/SKILL.md`（新規）, MCP 設定ファイル
+- **やること**: デザインシステム原則・UXガイドラインを SKILL.md に記載 + MCP プラグインのインストール。ソース: nextlevelbuilder/ui-ux-pro-max。カラーパレット選定指針、フォントペアリング、UX ガイドライン、MCP 検索コマンドの使用方法。MCP なしでも動作する設計
 - **検証方法**: `wc -l` で SKILL.md 500行以内、`disable-model-invocation: true` が**存在しない**こと、description が3部構成であること、MCP プラグインのインストール確認
 - **関連要件**: REQ-001, REQ-002, REQ-007, REQ-008, REQ-010
 - **関連スペック**: `specs/domain-skills/delta-spec.md#REQ-007`, `specs/domain-skills/delta-spec.md#REQ-010`
