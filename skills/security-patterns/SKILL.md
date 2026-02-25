@@ -1,413 +1,282 @@
 ---
 name: security-patterns
-description: "When implementing authentication, authorization, input validation, API endpoints, file uploads, or handling secrets in TypeScript/Next.js applications. Provides application-layer security patterns covering OWASP Top 10 mitigations, XSS/CSRF/SQLi prevention, Zod validation, CORS configuration, and secret management. MUST be invoked before writing or reviewing security-sensitive code paths."
+license: MIT
+compatibility: "Claude Code 2.1.56+."
+description: Security patterns for authentication, defense-in-depth, input validation, OWASP Top 10, LLM safety, and PII masking. Use when implementing auth flows, security layers, input sanitization, vulnerability prevention, prompt injection defense, or data redaction.
+tags: [security, authentication, authorization, defense-in-depth, owasp, input-validation, llm-safety, pii-masking, jwt, oauth]
+context: fork
+agent: security-auditor
+version: 2.0.0
+author: OrchestKit
+user-invocable: false
+complexity: high
+metadata:
+  category: document-asset-creation
 ---
 
-# アプリケーションレイヤー セキュリティパターン
+# Security Patterns
 
-## 原則
+Comprehensive security patterns for building hardened applications. Each category has individual rule files in `rules/` loaded on-demand.
 
-- **Defence in Depth**: 入力バリデーション + 出力エスケープ + CSP ヘッダーのように多層防御を徹底
-- **Secure by Default**: セキュリティは「追加するもの」ではなく「デフォルトで有効なもの」
-- **YAGNI 不適用**: セキュリティ防御策に YAGNI を適用しない。防御は常に先手で実装
-- **Fail Secure**: エラー時はアクセス拒否方向に倒す
+## Quick Reference
 
----
+| Category | Rules | Impact | When to Use |
+|----------|-------|--------|-------------|
+| [Authentication](#authentication) | 3 | CRITICAL | JWT tokens, OAuth 2.1/PKCE, RBAC/permissions |
+| [Defense-in-Depth](#defense-in-depth) | 2 | CRITICAL | Multi-layer security, zero-trust architecture |
+| [Input Validation](#input-validation) | 3 | HIGH | Schema validation (Zod/Pydantic), output encoding, file uploads |
+| [OWASP Top 10](#owasp-top-10) | 2 | CRITICAL | Injection prevention, broken authentication fixes |
+| [LLM Safety](#llm-safety) | 3 | HIGH | Prompt injection defense, output guardrails, content filtering |
+| [PII Masking](#pii-masking) | 2 | HIGH | PII detection/redaction with Presidio, Langfuse, LLM Guard |
+| [Scanning](#scanning) | 3 | HIGH | Dependency audit, SAST (Semgrep/Bandit), secret detection |
+| [Advanced Guardrails](#advanced-guardrails) | 2 | CRITICAL | NeMo/Guardrails AI validators, red-teaming, OWASP LLM |
 
-## 1. XSS 防止
+**Total: 20 rules across 8 categories**
 
-### dangerouslySetInnerHTML の禁止
+## Quick Start
 
-```typescript
-// NG: 原則使用禁止
-<div dangerouslySetInnerHTML={{ __html: userInput }} />
-
-// OK: React のデフォルトエスケープを活用
-<div>{userInput}</div>
+```python
+# Argon2id password hashing
+from argon2 import PasswordHasher
+ph = PasswordHasher()
+password_hash = ph.hash(password)
+ph.verify(password_hash, password)
 ```
 
-やむを得ず HTML レンダリングが必要な場合は DOMPurify でサニタイズ:
-
-```typescript
-import DOMPurify from 'isomorphic-dompurify'
-
-const clean = DOMPurify.sanitize(html, {
-  ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'p', 'br', 'ul', 'ol', 'li'],
-  ALLOWED_ATTR: [],
-})
-```
-
-### CSP ヘッダー
-
-```typescript
-// next.config.ts
-const config: NextConfig = {
-  async headers() {
-    return [{
-      source: '/(.*)',
-      headers: [
-        { key: 'Content-Security-Policy', value: [
-          "default-src 'self'",
-          "script-src 'self' 'nonce-${nonce}'",
-          "style-src 'self' 'unsafe-inline'",
-          "img-src 'self' data: https:",
-          "font-src 'self'",
-          "frame-ancestors 'none'",
-          "base-uri 'self'",
-          "form-action 'self'",
-        ].join('; ') },
-        { key: 'X-Content-Type-Options', value: 'nosniff' },
-        { key: 'X-Frame-Options', value: 'DENY' },
-        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-        { key: 'Permissions-Policy', value: 'geolocation=(), microphone=(), camera=()' },
-      ],
-    }]
-  },
+```python
+# JWT access token (15-min expiry)
+import jwt
+from datetime import datetime, timedelta, timezone
+payload = {
+    'sub': user_id, 'type': 'access',
+    'exp': datetime.now(timezone.utc) + timedelta(minutes=15),
 }
+token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
 ```
 
-### 追加ルール
-
-- `href` に `javascript:` プロトコルを許可しない
-- URL 構築時は `new URL()` でパース検証
-- `eval()` / `new Function()` 使用禁止
-
----
-
-## 2. CSRF 防止
-
-### Server Actions（自動保護）
-
-Next.js Server Actions は CSRF 保護が組み込み済み。追加対策不要。
-
-### Route Handlers（明示的対策が必要）
-
 ```typescript
-export async function POST(request: NextRequest) {
-  // Origin ヘッダーの検証
-  const origin = request.headers.get('origin')
-  if (!origin || !allowedOrigins.includes(origin)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-  // 処理...
-}
-```
-
-### Cookie 設定の必須要件
-
-| 属性 | 値 | 理由 |
-|---|---|---|
-| `httpOnly` | `true` | JS からのアクセス遮断 |
-| `secure` | `true`（本番） | HTTPS のみ |
-| `sameSite` | `strict` or `lax` | CSRF 防止 |
-| `path` | 最小スコープ | 不要なパスへの送信防止 |
-
-```typescript
-response.cookies.set('session', sessionId, {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
-  maxAge: 60 * 60 * 24,
-  path: '/',
-})
-```
-
----
-
-## 3. 入力バリデーション（Zod）
-
-### Server Actions
-
-```typescript
-'use server'
-import { z } from 'zod'
-
-const ContactSchema = z.object({
+// Zod v4 schema validation
+import { z } from 'zod';
+const UserSchema = z.object({
   email: z.string().email(),
-  message: z.string().min(10).max(2000),
-})
-
-export async function submitContact(formData: FormData) {
-  const result = ContactSchema.safeParse({
-    email: formData.get('email'),
-    message: formData.get('message'),
-  })
-  if (!result.success) {
-    return { success: false as const, errors: result.error.flatten().fieldErrors }
-  }
-  // result.data は型安全
-}
+  name: z.string().min(2).max(100),
+  role: z.enum(['user', 'admin']).default('user'),
+});
+const result = UserSchema.safeParse(req.body);
 ```
 
-### Route Handlers
+```python
+# PII masking with Langfuse
+import re
+from langfuse import Langfuse
 
-```typescript
-const QuerySchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  search: z.string().max(200).optional(),
-})
+def mask_pii(data, **kwargs):
+    if isinstance(data, str):
+        data = re.sub(r'\b[\w.-]+@[\w.-]+\.\w+\b', '[REDACTED_EMAIL]', data)
+        data = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', '[REDACTED_SSN]', data)
+    return data
 
-export async function GET(request: NextRequest) {
-  const result = QuerySchema.safeParse(
-    Object.fromEntries(request.nextUrl.searchParams)
-  )
-  if (!result.success) {
-    return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
-  }
-}
+langfuse = Langfuse(mask=mask_pii)
 ```
 
-### ルール
+## Authentication
 
-- **ホワイトリスト方式**: 許可する値を列挙（ブラックリスト禁止）
-- **全入力バリデーション**: Server Actions / Route Handlers は例外なく Zod で検証
-- **型と一体化**: `z.infer<typeof Schema>` で TypeScript 型を生成
-- **エラーメッセージ**: 内部情報を漏洩しない汎用メッセージにする
+Secure authentication with OAuth 2.1, Passkeys/WebAuthn, JWT tokens, and role-based access control.
 
----
+| Rule | Description |
+|------|-------------|
+| `auth-jwt.md` | JWT creation, verification, expiry, refresh token rotation |
+| `auth-oauth.md` | OAuth 2.1 with PKCE, DPoP, Passkeys/WebAuthn |
+| `auth-rbac.md` | Role-based access control, permission decorators, MFA |
 
-## 4. 認証・認可パターン
+**Key Decisions:** Argon2id > bcrypt | Access tokens 15 min | PKCE required | Passkeys > TOTP > SMS
 
-### Middleware によるルート保護
+## Defense-in-Depth
 
-```typescript
-// middleware.ts
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-  const isProtected = protectedPaths.some((p) => pathname.startsWith(p))
-  if (!isProtected) return NextResponse.next()
+Multi-layer security architecture with no single point of failure.
 
-  const session = request.cookies.get('session')?.value
-  if (!session) {
-    const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('callbackUrl', pathname)
-    return NextResponse.redirect(loginUrl)
-  }
-  return NextResponse.next()
-}
+| Rule | Description |
+|------|-------------|
+| `defense-layers.md` | 8-layer security architecture (edge to observability) |
+| `defense-zero-trust.md` | Immutable request context, tenant isolation, audit logging |
 
-export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
-}
+**Key Decisions:** Immutable dataclass context | Query-level tenant filtering | No IDs in LLM prompts
+
+## Input Validation
+
+Validate and sanitize all untrusted input using Zod v4 and Pydantic.
+
+| Rule | Description |
+|------|-------------|
+| `validation-input.md` | Schema validation with Zod v4 and Pydantic, type coercion |
+| `validation-output.md` | HTML sanitization, output encoding, XSS prevention |
+| `validation-schemas.md` | Discriminated unions, file upload validation, URL allowlists |
+
+**Key Decisions:** Allowlist over blocklist | Server-side always | Validate magic bytes not extensions
+
+## OWASP Top 10
+
+Protection against the most critical web application security risks.
+
+| Rule | Description |
+|------|-------------|
+| `owasp-injection.md` | SQL/command injection, parameterized queries, SSRF prevention |
+| `owasp-broken-auth.md` | JWT algorithm confusion, CSRF protection, timing attacks |
+
+**Key Decisions:** Parameterized queries only | Hardcode JWT algorithm | SameSite=Strict cookies
+
+## LLM Safety
+
+Security patterns for LLM integrations including context separation and output validation.
+
+| Rule | Description |
+|------|-------------|
+| `llm-prompt-injection.md` | Context separation, prompt auditing, forbidden patterns |
+| `llm-guardrails.md` | Output validation pipeline: schema, grounding, safety, size |
+| `llm-content-filtering.md` | Pre-LLM filtering, post-LLM attribution, three-phase pattern |
+
+**Key Decisions:** IDs flow around LLM, never through | Attribution is deterministic | Audit every prompt
+
+## PII Masking
+
+PII detection and masking for LLM observability pipelines and logging.
+
+| Rule | Description |
+|------|-------------|
+| `pii-detection.md` | Microsoft Presidio, regex patterns, LLM Guard Anonymize |
+| `pii-redaction.md` | Langfuse mask callback, structlog/loguru processors, Vault deanonymization |
+
+**Key Decisions:** Presidio for enterprise | Replace with type tokens | Use mask callback at init
+
+## Scanning
+
+Automated security scanning for dependencies, code, and secrets.
+
+| Rule | Description |
+|------|-------------|
+| `scanning-dependency.md` | npm audit, pip-audit, Trivy container scanning, CI gating |
+| `scanning-sast.md` | Semgrep and Bandit static analysis, custom rules, pre-commit |
+| `scanning-secrets.md` | Gitleaks, TruffleHog, detect-secrets with baseline management |
+
+**Key Decisions:** Pre-commit hooks for shift-left | Block on critical/high | Gitleaks + detect-secrets baseline
+
+## Advanced Guardrails
+
+Production LLM safety with NeMo Guardrails, Guardrails AI validators, and DeepTeam red-teaming.
+
+| Rule | Description |
+|------|-------------|
+| `guardrails-nemo.md` | NeMo Guardrails, Colang 2.0 flows, Guardrails AI validators, layered validation |
+| `guardrails-llm-validation.md` | DeepTeam red-teaming (40+ vulnerabilities), OWASP LLM Top 10 compliance |
+
+**Key Decisions:** NeMo for flows, Guardrails AI for validators | Toxicity 0.5 threshold | Red-team pre-release + quarterly
+
+## Managed Hook Hierarchy (CC 2.1.49)
+
+Plugin settings follow a 3-tier precedence:
+
+| Tier | Source | Overridable? |
+|------|--------|-------------|
+| 1. Managed (plugin `settings.json`) | Plugin author ships defaults | Yes, by user |
+| 2. Project (`.claude/settings.json`) | Repository config | Yes, by user |
+| 3. User (`~/.claude/settings.json`) | Personal preferences | Final authority |
+
+Security hooks shipped by OrchestKit are **managed defaults** — users can disable them but are warned. Enterprise admins can lock settings via managed profiles.
+
+## Anti-Patterns (FORBIDDEN)
+
+```python
+# Authentication
+user.password = request.form['password']       # Plaintext password storage
+response_type=token                             # Implicit OAuth grant (deprecated)
+return "Email not found"                        # Information disclosure
+
+# Input Validation
+"SELECT * FROM users WHERE name = '" + name + "'"  # SQL injection
+if (file.type === 'image/png') {...}               # Trusting Content-Type header
+
+# LLM Safety
+prompt = f"Analyze for user {user_id}"             # ID in prompt
+artifact.user_id = llm_output["user_id"]           # Trusting LLM-generated IDs
+
+# PII
+logger.info(f"User email: {user.email}")           # Raw PII in logs
+langfuse.trace(input=raw_prompt)                   # Unmasked observability data
 ```
 
-### Server Actions での認証・認可チェック
+## Detailed Documentation
 
-```typescript
-'use server'
-export async function deleteItem(itemId: string) {
-  // 1. 認証チェック: 必ず最初に実行
-  const session = await getServerSession()
-  if (!session?.user) throw new Error('Unauthorized')
+| Resource | Description |
+|----------|-------------|
+| [references/oauth-2.1-passkeys.md](references/oauth-2.1-passkeys.md) | OAuth 2.1, PKCE, DPoP, Passkeys/WebAuthn |
+| [references/request-context-pattern.md](references/request-context-pattern.md) | Immutable request context for identity flow |
+| [references/tenant-isolation.md](references/tenant-isolation.md) | Tenant-scoped repository, vector/full-text search |
+| [references/audit-logging.md](references/audit-logging.md) | Sanitized structured logging, compliance |
+| [references/zod-v4-api.md](references/zod-v4-api.md) | Zod v4 types, coercion, transforms, refinements |
+| [references/vulnerability-demos.md](references/vulnerability-demos.md) | OWASP vulnerable vs secure code examples |
+| [references/context-separation.md](references/context-separation.md) | LLM context separation architecture |
+| [references/output-guardrails.md](references/output-guardrails.md) | Output validation pipeline implementation |
+| [references/pre-llm-filtering.md](references/pre-llm-filtering.md) | Tenant-scoped retrieval, content extraction |
+| [references/post-llm-attribution.md](references/post-llm-attribution.md) | Deterministic attribution pattern |
+| [references/prompt-audit.md](references/prompt-audit.md) | Prompt audit patterns, safe prompt builder |
+| [references/presidio-integration.md](references/presidio-integration.md) | Microsoft Presidio setup, custom recognizers |
+| [references/langfuse-mask-callback.md](references/langfuse-mask-callback.md) | Langfuse SDK mask implementation |
+| [references/llm-guard-sanitization.md](references/llm-guard-sanitization.md) | LLM Guard Anonymize/Deanonymize with Vault |
+| [references/logging-redaction.md](references/logging-redaction.md) | structlog/loguru pre-logging redaction |
 
-  // 2. 認可チェック: リソース所有者か確認
-  const item = await prisma.item.findUnique({
-    where: { id: itemId },
-    select: { userId: true },
-  })
-  if (!item || item.userId !== session.user.id) throw new Error('Forbidden')
+## Related Skills
 
-  await prisma.item.delete({ where: { id: itemId } })
-}
-```
+- `api-design-framework` - API security patterns
+- `ork:rag-retrieval` - RAG pipeline patterns requiring tenant-scoped retrieval
+- `llm-evaluation` - Output quality assessment including hallucination detection
 
-### ルール
+## Capability Details
 
-- **認証チェックは先頭**: 全保護エンドポイントで最初に実行
-- **認可は個別**: ロール + リソース所有権の二重チェック
-- **トークン保存先**: httpOnly Cookie のみ（localStorage / sessionStorage 禁止）
-- **パスワード**: bcrypt / argon2 でハッシュ化。平文保存は絶対禁止
+### authentication
+**Keywords:** password, hashing, JWT, token, OAuth, PKCE, passkey, WebAuthn, RBAC, session
+**Solves:**
+- Implement secure authentication with modern standards
+- JWT token management with proper expiry
+- OAuth 2.1 with PKCE flow
+- Passkeys/WebAuthn registration and login
+- Role-based access control
 
----
+### defense-in-depth
+**Keywords:** defense in depth, security layers, multi-layer, request context, tenant isolation
+**Solves:**
+- How to secure AI applications end-to-end
+- Implement 8-layer security architecture
+- Create immutable request context
+- Ensure tenant isolation at query level
 
-## 5. ファイルアップロードバリデーション
+### input-validation
+**Keywords:** schema, validate, Zod, Pydantic, sanitize, HTML, XSS, file upload
+**Solves:**
+- Validate input against schemas (Zod v4, Pydantic)
+- Prevent injection attacks with allowlists
+- Sanitize HTML and prevent XSS
+- Validate file uploads by magic bytes
 
-```typescript
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] as const
-const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+### owasp-top-10
+**Keywords:** OWASP, sql injection, broken access control, CSRF, XSS, SSRF
+**Solves:**
+- Fix OWASP Top 10 vulnerabilities
+- Prevent SQL and command injection
+- Implement CSRF protection
+- Fix broken authentication
 
-export function validateUpload(file: File) {
-  if (file.size > MAX_FILE_SIZE) throw new Error('File too large')
-  if (!ALLOWED_MIME_TYPES.includes(file.type as any)) throw new Error('Invalid file type')
+### llm-safety
+**Keywords:** prompt injection, context separation, guardrails, hallucination, LLM output
+**Solves:**
+- Prevent prompt injection attacks
+- Implement context separation (IDs around LLM)
+- Validate LLM output with guardrail pipeline
+- Deterministic post-LLM attribution
 
-  // ファイル名サニタイズ: パストラバーサル防止
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.{2,}/g, '.')
-  return { file, safeName }
-}
-```
-
-### ルール
-
-- **サイズ制限**: 用途に応じた上限を必ず設定
-- **MIME タイプ検証**: ホワイトリスト方式
-- **ファイル名サニタイズ**: パストラバーサル防止
-- **保存先**: Cloud Storage（GCS 等）を使用。パブリックディレクトリ直接保存禁止
-- **本番環境**: マジックバイト検証・アンチウイルススキャンを検討
-
----
-
-## 6. CORS 設定
-
-```typescript
-const ALLOWED_ORIGINS = [process.env.NEXT_PUBLIC_APP_URL].filter(Boolean) as string[]
-
-function getCorsHeaders(origin: string | null): Record<string, string> {
-  const headers: Record<string, string> = {
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Max-Age': '86400',
-  }
-  if (origin && ALLOWED_ORIGINS.includes(origin)) {
-    headers['Access-Control-Allow-Origin'] = origin
-    headers['Vary'] = 'Origin'
-  }
-  return headers
-}
-
-export async function OPTIONS(request: NextRequest) {
-  return new NextResponse(null, { status: 204, headers: getCorsHeaders(request.headers.get('origin')) })
-}
-```
-
-### ルール
-
-- **`Access-Control-Allow-Origin: *` 禁止**: 認証付き API では絶対不可
-- **オリジンのホワイトリスト**: 環境変数で管理し動的検証
-- **Credentials 使用時**: ワイルドカードオリジン不可
-
----
-
-## 7. SQL インジェクション防止（Prisma）
-
-```typescript
-// OK: Prisma クエリビルダー（自動パラメータ化）
-const user = await prisma.user.findUnique({ where: { email: userInput } })
-
-// OK: $queryRaw テンプレートリテラル（自動パラメータ化）
-const users = await prisma.$queryRaw`SELECT * FROM "User" WHERE email = ${userEmail}`
-
-// NG: $queryRawUnsafe で文字列連結（SQL インジェクション脆弱性）
-await prisma.$queryRawUnsafe(`SELECT * FROM users WHERE email = '${userInput}'`)
-```
-
-### ルール
-
-- **Prisma Client のみ使用**: 生 DB ドライバー（pg 等）不使用
-- **`$queryRawUnsafe` 禁止**: 使用する場合はセキュリティレビュー必須（エスカレーション対象）
-- **動的カラム名**: ホワイトリストで検証してから使用
-
----
-
-## 8. シークレット管理
-
-### 開発環境（環境変数 + Zod バリデーション）
-
-```typescript
-// env.ts - 起動時バリデーション
-import { z } from 'zod'
-
-const envSchema = z.object({
-  DATABASE_URL: z.string().url(),
-  NEXTAUTH_SECRET: z.string().min(32),
-  NEXT_PUBLIC_APP_URL: z.string().url(),
-})
-
-export const env = envSchema.parse(process.env)
-```
-
-### 本番環境（GCP Secret Manager）
-
-```typescript
-import { SecretManagerServiceClient } from '@google-cloud/secret-manager'
-
-const client = new SecretManagerServiceClient()
-
-export async function getSecret(name: string): Promise<string> {
-  const [version] = await client.accessSecretVersion({
-    name: `projects/${process.env.GCP_PROJECT_ID}/secrets/${name}/versions/latest`,
-  })
-  const payload = version.payload?.data
-  if (!payload) throw new Error(`Secret ${name} not found`)
-  return typeof payload === 'string' ? payload : payload.toString()
-}
-```
-
-### ルール
-
-| ルール | 説明 |
-|---|---|
-| ハードコード禁止 | API キー・パスワード・トークンをソースコードに記述しない |
-| `.env.local` を gitignore | `.gitignore` に `.env*.local` を含める |
-| 起動時バリデーション | Zod で環境変数の存在・形式を検証 |
-| 本番は Secret Manager | GCP Secret Manager でシークレットを管理 |
-| ログ出力禁止 | シークレットを console.log / エラーメッセージに含めない |
-| クライアント公開禁止 | `NEXT_PUBLIC_` プレフィックスにシークレットを含めない |
-
----
-
-## 9. エラーハンドリング（情報漏洩防止）
-
-```typescript
-// OK: ユーザーには汎用メッセージ、サーバーログに詳細
-catch (error) {
-  console.error('Internal error:', error)
-  return NextResponse.json({ error: 'An error occurred.' }, { status: 500 })
-}
-
-// NG: スタックトレースや DB 情報をクライアントに返す
-catch (error) {
-  return NextResponse.json({ error: error.message, stack: error.stack }, { status: 500 })
-}
-```
-
-- スタックトレースをクライアントに返さない
-- DB エラーの詳細をクライアントに返さない
-- `NODE_ENV === 'production'` ではデバッグ情報を一切出力しない
-
----
-
-## 10. レート制限
-
-API エンドポイントにはレート制限を設ける。本番環境では Redis ベースの実装を使用する（サーバーレス環境ではインメモリは共有不可）。
-
-認証エンドポイント（ログイン・パスワードリセット）には特に厳しい制限を設定すること。
-
----
-
-## アンチパターン一覧
-
-| アンチパターン | リスク | 対策 |
-|---|---|---|
-| `dangerouslySetInnerHTML` 未サニタイズ | XSS | DOMPurify or 使用しない |
-| localStorage にトークン保存 | XSS でトークン窃取 | httpOnly Cookie |
-| `$queryRawUnsafe` で文字列連結 | SQL インジェクション | Prisma クエリビルダー |
-| `Access-Control-Allow-Origin: *` | CSRF / データ漏洩 | オリジンホワイトリスト |
-| 環境変数バリデーション未実施 | 不明確なエラー | Zod で起動時検証 |
-| エラーに内部情報含有 | 情報漏洩 | 汎用メッセージ |
-| Route Handler に認証チェックなし | 不正アクセス | Middleware + 個別チェック |
-| CSRF 対策なしの Route Handler POST | CSRF 攻撃 | Origin 検証 + SameSite Cookie |
-| `NEXT_PUBLIC_` にシークレット | クライアント漏洩 | サーバー専用環境変数 |
-| ファイルアップロードサイズ無制限 | DoS | サイズ上限設定 |
-
----
-
-## セキュリティチェックリスト
-
-- [ ] 全入力が Zod スキーマでバリデーション済み
-- [ ] 認証チェックが全保護エンドポイントの先頭にある
-- [ ] 認可チェックがリソースアクセスの前にある
-- [ ] CSP ヘッダーが設定されている
-- [ ] Cookie に httpOnly / secure / sameSite が設定されている
-- [ ] Route Handlers に CSRF 対策（Origin 検証）がある
-- [ ] Prisma パラメータ化クエリのみ使用
-- [ ] シークレットがハードコードされていない
-- [ ] エラーメッセージに内部情報が含まれていない
-- [ ] ファイルアップロードにサイズ・タイプ制限がある
-- [ ] CORS がホワイトリスト方式
-- [ ] `npm audit` でゼロ脆弱性を維持
-
-## Applicability
-
-- **フェーズ**: implementation, review, debug
-- **ドメイン**: 全ドメイン（セキュリティは横断的関心事）
+### pii-masking
+**Keywords:** PII, masking, Presidio, Langfuse, redact, GDPR, privacy
+**Solves:**
+- Detect and mask PII in LLM pipelines
+- Integrate masking with Langfuse observability
+- Implement pre-logging redaction
+- GDPR-compliant data handling
