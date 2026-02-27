@@ -1,0 +1,129 @@
+{
+  "cleanupPeriodDays": 30,
+  "env": {
+    "DISABLE_TELEMETRY": "1",
+    "DISABLE_ERROR_REPORTING": "1",
+    "DISABLE_BUG_COMMAND": "1",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "includeCoAuthoredBy": false,
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh issue:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh repo clone:*)",
+      "Bash(gh api:*)",
+      "Bash(gh auth status:*)",
+      "Bash(gh browse:*)",
+      "Bash(gh workflow:*)",
+      "Bash(gh run:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(swift test:*)",
+      "Bash(swift build:*)",
+      "Bash(swiftlint:*)",
+      "Bash(xcrun:*)",
+      "Bash(xcode-select:*)",
+      "Bash(openspec list:*)",
+      "Bash(openspec show:*)",
+      "Bash(openspec validate:*)",
+      "Bash(openspec archive:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Read(./openspec)",
+      "Read(./Sources)",
+      "Read(./Tests)",
+      "Read(./docs)",
+      "Read(./.claude)",
+      "Read(./.context)",
+      "Read(./specs)",
+      "Edit(./openspec)",
+      "Edit(./Sources)",
+      "Edit(./Tests)",
+      "Edit(./docs)",
+      "Edit(./.claude)",
+      "Edit(./specs)",
+      "mcp__sequential-thinking__sequentialthinking"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(gh repo delete:*)",
+      "Bash(gh secret:*)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./envs/.env.*)",
+      "Read(./secrets/**)",
+      "Read(./**/credentials*)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Edit(./.env)",
+      "Edit(./.env.*)",
+      "Edit(./envs/.env.*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ~/.claude/hooks/block-unnecessary-files.js \"$TOOL_INPUT\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ~/.claude/hooks/require-tmux-for-builds.js \"$TOOL_INPUT\""
+          },
+          {
+            "type": "command",
+            "command": "node ~/.claude/hooks/gate-git-push.js \"$TOOL_INPUT\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ~/.claude/hooks/detect-print.js \"$TOOL_INPUT\""
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ~/.claude/hooks/task-completed.js"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "input=$(cat); dir=$(pwd | sed \"s|^$HOME|~|\"); used=$(echo \"$input\" | jq -r '.context_window.used_percentage // empty'); if [ -n \"$used\" ]; then used_int=$(printf '%.0f' \"$used\"); if [ \"$used_int\" -ge 80 ]; then color=\"\\033[2;31m\"; elif [ \"$used_int\" -ge 60 ]; then color=\"\\033[2;33m\"; else color=\"\\033[2;32m\"; fi; printf \"%s | ${color}Context: %d%% used\\033[0m\" \"$dir\" \"$used_int\"; else echo \"$dir\"; fi"
+  },
+  "enabledPlugins": {},
+  "alwaysThinkingEnabled": true,
+  "skipDangerousModePermissionPrompt": true,
+  "teammateMode": "auto"
+}

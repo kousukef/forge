@@ -1,0 +1,8 @@
+{
+  "name": "forge-hooks",
+  "version": "2.0.0",
+  "description": "Forge workflow hooks for Claude Code",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
