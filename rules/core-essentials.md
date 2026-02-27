@@ -29,14 +29,14 @@
 
 ## セキュリティ必須事項
 
-- ハードコードされたシークレット・APIキー禁止
-- 環境変数は `.env.local`（開発）、Secret Manager（本番）
-- ユーザー入力は必ずZodでバリデーション
-- SQLインジェクション防止: Prismaパラメータ化クエリのみ
-- XSS防止: `dangerouslySetInnerHTML` 禁止
-- CSRF: Server Actionsは自動保護、Route Handlersは明示的対策
-- 認証: middleware.tsでルートレベル保護
-- 依存関係: `npm audit` でゼロ脆弱性維持
+- ハードコードされたシークレット・APIキー・認証情報禁止
+- 機密情報は EncryptedSharedPreferences または Android Keystore を使用
+- ユーザー入力は必ず検証・サニタイズ（SQLインジェクション防止: Room パラメータ化クエリのみ）
+- Network Security Config でクリアテキスト通信を禁止（本番）
+- 証明書ピニングを実装（重要 API エンドポイント）
+- ProGuard / R8 で難読化・シュリンクを有効化（リリースビルド）
+- 認証: 適切な Intent フラグ設定・Activity エクスポート管理
+- 依存関係: `./gradlew dependencyCheckAnalyze` で脆弱性確認
 
 ---
 
@@ -54,13 +54,14 @@
 
 | ファイル | 読み込むタイミング |
 |---|---|
-| `reference/typescript-rules.md` | TypeScript実装・型設計時 |
+| `reference/kotlin-rules.md` | Kotlin実装・型設計・慣用句確認時 |
 | `reference/coding-standards.md` | コーディング規約の確認時 |
 | `reference/core-rules.md` | フェーズ管理・検証ゲート確認時 |
 | `reference/workflow-rules.md` | セッション管理・チェックポイント時 |
 | `reference/common/coding-style.md` | ファイルサイズ・命名規約確認時 |
 | `reference/common/testing.md` | テスト作成・TDD実践時 |
 | `reference/common/performance.md` | パフォーマンス最適化時 |
-| `reference/nextjs/conventions.md` | Next.js App Router作業時 |
-| `reference/prisma/conventions.md` | Prismaスキーマ・クエリ作業時 |
-| `reference/terraform/conventions.md` | Terraform IaC作業時 |
+| `reference/android/conventions.md` | Android全般・Activity/Fragment・Gradle作業時 |
+| `reference/jetpack-compose/conventions.md` | Jetpack Compose UI実装時 |
+| `reference/room/conventions.md` | Room DBスキーマ・DAO・マイグレーション時 |
+| `reference/retrofit/conventions.md` | Retrofit/OkHttp APIレイヤー実装時 |
