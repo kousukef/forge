@@ -31,14 +31,32 @@ Forge は、設計から実装・レビュー・テスト・学習までの開�
 
 ### セットアップ
 
-このリポジトリの内容を `~/.claude/` にコピーして使用します。
+インストーラースクリプトでシンボリックリンクを作成します。`git pull` で更新が自動反映されます。
 
 ```bash
 # リポジトリをクローン
 git clone https://github.com/your-username/forge.git
 cd forge
 
-# ~/.claude/ にコピー（既存の設定がある場合はバックアップを推奨）
+# シンボリックリンク方式でインストール
+bash install.sh
+```
+
+`-y` フラグで確認プロンプトをスキップできます（CI / 非対話環境向け）:
+
+```bash
+bash install.sh -y
+```
+
+> **注意**: 既に `~/.claude/settings.json` が存在する場合は上書きしません。設定を更新する場合は `settings.template.json` をテンプレートとして参照してください。
+
+<details>
+<summary>手動インストール（コピー方式）</summary>
+
+シンボリックリンクを使わずにファイルをコピーする場合:
+
+```bash
+mkdir -p ~/.claude
 cp -r commands/ ~/.claude/commands/
 cp -r agents/ ~/.claude/agents/
 cp -r skills/ ~/.claude/skills/
@@ -49,53 +67,72 @@ cp -r docs/ ~/.claude/docs/
 cp settings.json ~/.claude/settings.json
 ```
 
-または、ワンライナーで一括コピー：
+> コピー方式では `git pull` による更新が反映されません。更新時は再度コピーしてください。
+
+</details>
+
+### インストールの確認
+
+セットアップ後、各ディレクトリ内の要素がシンボリックリンクになっていれば正しくインストールされています:
 
 ```bash
-# ~/.claude/ が存在しない場合は作成
-mkdir -p ~/.claude
-
-# 全ファイルをコピー（README と .git を除く）
-rsync -av --exclude='README.md' --exclude='.git' --exclude='forge-system-prompt.md' ./ ~/.claude/
+ls -la ~/.claude/skills/
 ```
 
-> **注意**: 既に `~/.claude/settings.json` が存在する場合は、手動でマージしてください。上書きすると既存のフック設定が消えます。`settings.template.json` をテンプレートとして参照できます。
+期待される出力（パスはクローン先によって異なります）:
 
-### コピー先の確認
+```
+drwxr-xr-x  .
+drwxr-xr-x  ..
+lrwxr-xr-x  forge-skill-orchestrator -> /path/to/forge/skills/forge-skill-orchestrator
+lrwxr-xr-x  test-driven-development  -> /path/to/forge/skills/test-driven-development
+lrwxr-xr-x  ...
+my-custom-skill/                       # ユーザー独自のスキル（共存可能）
+```
 
-セットアップ後、以下の構造になっていれば正しくインストールされています：
+ディレクトリ構造:
 
 ```
 ~/.claude/
-├── commands/           # スラッシュコマンド（10 個）
-├── agents/
-│   ├── research/       # リサーチエージェント（4 個）
-│   ├── spec/           # スペックエージェント（2 個）
-│   ├── orchestration/  # オーケストレーションエージェント（1 個）
-│   ├── implementation/ # 実装エージェント（3 個）
-│   └── review/         # レビューエージェント（7 個）
-├── skills/             # スキル定義（方法論 7 個 + ドメイン 9 個）
-├── rules/
-│   └── core-essentials.md  # 常時読み込みルール
-├── reference/          # オンデマンド参照ルール（10 個）
-│   ├── common/         # 共通規約
-│   ├── nextjs/         # Next.js 規約
-│   ├── prisma/         # Prisma 規約
-│   └── terraform/      # Terraform 規約
-├── hooks/              # 自動品質ゲート（9 個）
-├── docs/
-│   └── compound/       # 複利ドキュメント
-└── settings.json       # フック・パーミッション設定
+├── commands/                          # ディレクトリはユーザー所有
+│   ├── brainstorm.md -> forge/...     #   中の各ファイルが Forge へのリンク
+│   ├── commit.md -> forge/...
+│   └── my-command.md                  #   ユーザー独自コマンド（共存可能）
+├── agents/                            # エージェント定義
+│   ├── research/ -> forge/...         #   カテゴリ単位でリンク
+│   ├── spec/ -> forge/...
+│   ├── orchestration/ -> forge/...
+│   ├── implementation/ -> forge/...
+│   └── review/ -> forge/...
+├── skills/                            # スキル定義（方法論 + ドメイン）
+│   ├── forge-skill-orchestrator/ -> forge/...
+│   ├── test-driven-development/ -> forge/...
+│   └── my-custom-skill/               #   ユーザー独自スキル（共存可能）
+├── rules/                             # 常時読み込みルール
+│   └── core-essentials.md -> forge/...
+├── reference/                         # オンデマンド参照ルール
+│   ├── common/ -> forge/...
+│   ├── typescript-rules.md -> forge/...
+│   └── ...
+├── hooks/                             # 自動品質ゲート
+│   ├── gate-git-push.js -> forge/...
+│   ├── package.json -> forge/...
+│   └── ...
+├── docs/                              # 複利ドキュメント
+│   ├── compound/ -> forge/...
+│   └── ...
+└── settings.json                      # フック・パーミッション設定（コピー）
 ```
 
 ### アンインストール
 
+アンインストーラースクリプトでシンボリックリンクを削除します:
+
 ```bash
-# Forge のファイルを削除（他の Claude Code 設定は残ります）
-rm -rf ~/.claude/commands ~/.claude/agents ~/.claude/skills \
-       ~/.claude/rules ~/.claude/reference ~/.claude/hooks ~/.claude/docs
-# settings.json は手動で Forge のフック設定を削除してください
+bash uninstall.sh
 ```
+
+Forge が作成したシンボリックリンクのみ削除し、ユーザー独自の資産や Claude Code のランタイムファイル（`projects/`, `teams/`, `tasks/`）には触れません。`settings.json` も自動削除しません。
 
 ---
 
@@ -523,12 +560,14 @@ skills/<skill-name>/
 
 ## リポジトリ構造
 
-本リポジトリの構造です。使用時は `~/.claude/` にコピーしてください。
+本リポジトリの構造です。`bash install.sh` でシンボリックリンク方式でインストールできます。
 
 ```
 forge/
 ├── README.md
 ├── CLAUDE.md                        # ワークフローシステム定義
+├── install.sh                       # シンボリックリンク方式インストーラー
+├── uninstall.sh                     # アンインストーラー
 ├── forge-system-prompt.md           # システムプロンプトテンプレート
 ├── settings.json                    # → ~/.claude/settings.json
 ├── settings.template.json           # 設定テンプレート
