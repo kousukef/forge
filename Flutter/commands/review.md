@@ -52,7 +52,7 @@ REVIEW INSTRUCTION:
 |---|---|
 | 常時起動（全変更） | **security-sentinel** |
 | `.dart` ファイルが含まれる | **dart-reviewer** |
-| `lib/` 配下のウィジェット・画面ファイルが含まれる | **flutter-architecture-reviewer**, **bloc-riverpod-reviewer** |
+| `lib/` 配下のウィジェット・画面ファイルが含まれる | **flutter-architecture-reviewer**, **bloc-riverpod-reviewer**, **flutter-ui-reviewer** |
 | `*_test.dart` ファイルが含まれる | **flutter-test-reviewer** |
 | パフォーマンス関連（`ListView`, `GridView`, 画像処理, isolate 等）ファイルが含まれる | **flutter-performance-reviewer** |
 

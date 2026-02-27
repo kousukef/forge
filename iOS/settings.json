@@ -43,7 +43,6 @@
       "Read(./Tests)",
       "Read(./docs)",
       "Read(./.claude)",
-      "Read(./.context)",
       "Read(./specs)",
       "Edit(./openspec)",
       "Edit(./Sources)",

@@ -30,6 +30,7 @@
       "Bash(npx tsc --noEmit:*)",
       "Bash(npx eslint:*)",
       "Bash(npx react-native:*)",
+      "Bash(npx detox:*)",
       "Bash(npm test:*)",
       "Bash(npm run lint:*)",
       "Bash(npm run type-check:*)",
@@ -103,6 +104,16 @@
           {
             "type": "command",
             "command": "node ~/.claude/hooks/detect-console-log.js \"$TOOL_INPUT\""
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ~/.claude/hooks/task-completed.js"
           }
         ]
       }
