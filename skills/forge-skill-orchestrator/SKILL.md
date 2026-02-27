@@ -37,12 +37,15 @@ description: "Use at the START of every task, before writing any code, running t
 
 | ファイルパスパターン | ドメイン |
 |---|---|
-| `src/app/**/*.tsx`, `src/components/**/*.tsx` | nextjs-frontend |
-| `src/app/api/**/*.ts`, `src/actions/**/*.ts` | typescript-backend |
-| `prisma/**/*`, `*.prisma` | prisma-database |
-| `terraform/**/*`, `*.tf` | terraform-infrastructure |
-| `e2e/**/*`, `**/*.spec.ts`, `**/*.e2e.ts` | testing |
-| `src/**/*.ts` (上記以外) | typescript-backend |
+| `**/presentation/**/*.kt`, `**/*Screen.kt`, `**/*Composable.kt` | android-ui |
+| `**/domain/**/*.kt`, `**/*UseCase.kt` | android-domain |
+| `**/data/**/*.kt`, `**/*Repository*.kt`, `**/*DataSource.kt` | android-data |
+| `**/*Dao.kt`, `**/*Entity.kt`, `**/*Database.kt` | android-room |
+| `**/*Api*.kt`, `**/*Service.kt`, `**/network/**/*.kt` | android-network |
+| `**/*Module.kt`, `**/di/**/*.kt` | android-di |
+| `**/*NavGraph.kt`, `**/navigation/**/*.kt` | android-navigation |
+| `**/*Test.kt`, `**/androidTest/**/*.kt`, `**/test/**/*.kt` | android-testing |
+| `**/*.kt` (上記以外) | android-kotlin |
 | 複数ドメインにまたがる場合 | 該当する全ドメインの Union |
 
 ## Methodology Skills レジストリ（universal -- 全ドメイン共通）

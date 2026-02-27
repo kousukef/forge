@@ -34,7 +34,7 @@ try {
   console.error('Please ensure the following before pushing:');
   console.error('  1. Code review has been completed (/review)');
   console.error('  2. All tests pass (/test)');
-  console.error('  3. Build succeeds (npm run build)');
+  console.error('  3. Build succeeds (./gradlew assembleDebug)');
 
   // Allow but with warning
   process.exit(0);

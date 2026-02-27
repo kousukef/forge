@@ -19,8 +19,8 @@ skills: [iterative-retrieval]
 
 ## Required Skills
 
-作業開始前に以下の Skill ファイルを読み込み、指示に従うこと:
-- `.claude/skills/iterative-retrieval/SKILL.md` -- 段階的コンテキスト取得
+エージェント定義の `skills` frontmatter に宣言されたスキルは Claude Code が自動的に読み込む:
+- `iterative-retrieval` -- 段階的コンテキスト取得
 
 ## 入力
 
@@ -72,7 +72,7 @@ delta-spec の各要件・シナリオに対して、どのレビュアーのど
 
 各指摘には以下の項目を必ず含めること:
 - **レビュアー**: 指摘元のレビュアー名（例: security-sentinel, performance-oracle）
-- **カテゴリ**: 指摘の分類（Security / Performance / Architecture / Type Safety / API Contract / Prisma / Terraform）
+- **カテゴリ**: 指摘の分類（Security / Performance / Architecture / Kotlin / Compose / Test）
 - **指摘内容**: 問題の詳細な説明
 - **優先度**: Critical / High / Medium / Low（P1 = Critical, P2 = High, P3 = Medium, ノイズ候補 = Low）
 - **推奨修正**: 具体的な修正案
@@ -107,7 +107,7 @@ delta-spec の各要件・シナリオに対して、どのレビュアーのど
 ### Performance
 
 #### 指摘 2: [タイトル]
-- **レビュアー**: performance-oracle
+- **レビュアー**: android-performance-reviewer
 - **優先度**: High
 - **確信度**: MEDIUM
 - **対象ファイル**: `ファイルパス:行番号`
@@ -128,8 +128,8 @@ delta-spec の各要件・シナリオに対して、どのレビュアーのど
 
 ## 矛盾検出
 ### [CONFLICT-001] [矛盾の概要]
-- **レビュアーA**: [architecture-strategist] -- [指摘内容と根拠]
-- **レビュアーB**: [performance-oracle] -- [指摘内容と根拠]
+- **レビュアーA**: [android-architecture-reviewer] -- [指摘内容と根拠]
+- **レビュアーB**: [android-performance-reviewer] -- [指摘内容と根拠]
 - **ユーザー判断が必要**: [判断すべきポイント]
 
 ## ノイズ候補（低確信度）
@@ -146,12 +146,12 @@ delta-spec の各要件・シナリオに対して、どのレビュアーのど
 
 ## Review Coverage Matrix
 
-| 仕様項目 | Security | Performance | Architecture | Type Safety | API Contract | Prisma | Terraform | カバー状態 |
-|---|---|---|---|---|---|---|---|---|
-| REQ-001: Happy Path | - | PERF-001 | - | TYPE-002 | - | - | - | Covered |
-| REQ-001: Error Scenario | SEC-003 | - | - | - | API-001 | - | - | Covered |
-| REQ-002: Happy Path | - | - | ARCH-001 | - | - | - | - | Covered |
-| REQ-002: Boundary | - | - | - | - | - | - | - | **UNCOVERED** |
+| 仕様項目 | Security | Performance | Architecture | Kotlin | Compose | Test | カバー状態 |
+|---|---|---|---|---|---|---|---|
+| REQ-001: Happy Path | - | PERF-001 | - | KT-002 | - | - | Covered |
+| REQ-001: Error Scenario | SEC-003 | - | - | - | - | TEST-001 | Covered |
+| REQ-002: Happy Path | - | - | ARCH-001 | - | COMPOSE-001 | - | Covered |
+| REQ-002: Boundary | - | - | - | - | - | - | **UNCOVERED** |
 
 ### 未カバー項目
 - REQ-002: Boundary Scenario -- どのレビュアーも検証していない。追加レビューを推奨。
