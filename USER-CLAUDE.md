@@ -1,6 +1,6 @@
 # CLAUDE.md -- Forge User Configuration
 
-> **Setup**: このファイルを `~/.claude/CLAUDE.md` にコピーし、[Personal Preferences](#personal-preferences) を自分用にカスタマイズしてください。
+> **Setup**: このファイルを `~/.claude/CLAUDE.md` にコピーし、必要に応じてカスタマイズしてください。
 > プロジェクト固有の設定は各プロジェクトの `CLAUDE.md` に記述します。
 
 ## Core Philosophy
@@ -29,7 +29,7 @@
 
 ## Rules
 
-常時読み込み: `rules/core-essentials.md`（エスカレーション・セキュリティ・Git形式）
+常時読み込み: `rules/core-essentials.md`（エスカレーション・セキュリティ・Skill Orchestration・Context Isolation・Git・コード品質）
 
 詳細ルールは `reference/` にオンデマンド配置。作業対象に応じて必要なファイルを読み込む:
 
@@ -91,63 +91,8 @@
 
 ---
 
-## Skill Orchestration（1% ルール）
-
-**1% でも適用される可能性があれば、そのスキルを呼び出せ。**
-
-作業開始前に `forge-skill-orchestrator` でフェーズ判定 → ドメイン判定 → スキル特定を行う。サブエージェントにはスキル**名**を渡す（Claude Code が自動解決）。Main Agent が SKILL.md を Read してインライン展開することは禁止。
-
----
-
-## Context Isolation Policy
-
-Main Agent はオーケストレーション専任。以下を厳守:
-
-| 禁止操作 | 代替手段 |
-|---|---|
-| Write/Edit で実装ファイル編集 | Task(implementer) に委譲 |
-| 実装ファイル（.ts/.tsx）の Read | Explore Agent / implementer に委譲 |
-| SKILL.md の Read | スキル名のみ決定、Claude Code が自動解決 |
-| `git diff`（内容表示） | `git diff --stat` のみ許可 |
-
-詳細（2層アーキテクチャ、Teams/Task切り替え基準、implementer責務）: `reference/context-isolation.md`
-
----
-
-## Escalation
-
-`rules/core-essentials.md` のエスカレーションポリシーに従う（必須/状況依存/自律判断OK）。
-
----
-
 ## Compound Learning
 
 学びを種別に応じて適切なアーティファクトに自動ルーティング。詳細は `/compound` コマンド定義を参照。
-
----
-
-## Personal Preferences
-
-<!-- ===== ここから下をユーザーごとにカスタマイズ ===== -->
-
-### Code Style
-
-- TypeScript strict mode 準拠
-- 既存のコード規約・パターンを踏襲
-- コードやコメントにエモジを入れない
-
-### Git
-
-- コミット形式: `<type>(<scope>): <日本語の説明>`
-- PR説明は日本語
-- 小さく焦点を絞ったコミット
-- コミット前に `git diff` でレビュー
-
-### Quality
-
-- TDD: RED → GREEN → REFACTOR
-- テストをスキップ・無効化して通過させない
-- TODO/モック/スタブを本実装に残さない
-- `npx tsc --noEmit` をコミット前に実行
 
 ---

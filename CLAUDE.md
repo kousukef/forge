@@ -48,7 +48,7 @@ openspec/
 
 ## Rules
 
-常時読み込み: `rules/core-essentials.md`（エスカレーション・セキュリティ・Git形式）
+常時読み込み: `rules/core-essentials.md`（エスカレーション・セキュリティ・Skill Orchestration・Context Isolation・Git・コード品質）
 
 詳細ルールは `reference/` にオンデマンド配置。作業対象に応じて必要なファイルを読み込む:
 
@@ -72,55 +72,6 @@ openspec/
 エージェント定義は `agents/` を参照。スキル定義は `skills/`（プロジェクト固有）と `~/.claude/skills/`（グローバル）から自動検出される。スキルは**名前**で参照する（パスの指定は不要）。
 
 フック定義は `hooks/` を参照。Write前後・Bash前にガードレールが自動適用される。
-
----
-
-## Skill Orchestration（1% ルール）
-
-**1% でも適用される可能性があれば、そのスキルを呼び出せ。**
-
-作業開始前に `forge-skill-orchestrator` を適用し、フェーズ判定 → ドメイン判定 → スキル特定を行う。
-
-サブエージェントにはスキル**名**を渡す（Claude Code が自動解決）。Main Agent が SKILL.md の内容を Read してインライン展開することは禁止。
-
----
-
-## Context Isolation Policy
-
-Main Agent はオーケストレーション専任。以下を厳守:
-
-| 禁止操作 | 代替手段 |
-|---|---|
-| Write / Edit で実装ファイルを編集 | Task(implementer) に委譲 |
-| 実装ファイル（`.ts`, `.tsx`）の Read | Explore Agent / implementer に委譲 |
-| SKILL.md の Read | スキル名のみ決定、Claude Code が自動解決 |
-| `git diff`（ファイル内容表示） | `git diff --stat` のみ許可 |
-
-Teams / Sub Agents のモード選択、タスク分析・バッチ構成、検証コマンド実行などの詳細は `reference/context-isolation.md` を参照。
-
----
-
-## Personal Preferences
-
-### Code Style
-
-- TypeScript strict mode 準拠
-- 既存のコード規約・パターンを踏襲
-- コードやコメントにエモジを入れない
-
-### Git
-
-- コミット形式: `<type>(<scope>): <日本語の説明>`
-- PR説明は日本語
-- 小さく焦点を絞ったコミット
-- コミット前に `git diff` でレビュー
-
-### Quality
-
-- テスト前にコードを書かない（TDD: RED → GREEN → REFACTOR）
-- テストをスキップ・無効化して通過させない
-- TODO/モック/スタブを本実装に残さない
-- `npx tsc --noEmit` をコミット前に実行
 
 ---
 
