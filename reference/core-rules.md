@@ -39,22 +39,7 @@ Forge ワークフローシステムの中核ルール。すべてのプロジ�
 
 **Priority**: CRITICAL **Triggers**: 判断が必要な場面
 
-### Always Autonomous (自律判断OK)
-
-- コードフォーマット、lint 修正
-- テスト追加・修正
-- ドキュメント更新
-- パッチバージョンの更新
-- 明らかなバグ修正
-
-### Always Escalate (要エスカレーション)
-
-- セキュリティ関連の変更（認証、認可、暗号化）
-- データベーススキーマ変更
-- アーキテクチャの変更
-- 本番環境への影響
-- コンプライアンス関連
-- 不可逆な変更
+エスカレーションポリシーの正式定義は `rules/core-essentials.md` を参照。以下は補足的な判断基準:
 
 ### Confidence-Based Decision
 
@@ -102,21 +87,7 @@ npm test && npx tsc --noEmit
 
 **Priority**: CRITICAL **Triggers**: バージョン管理操作
 
-### Branch Rules
-
-```
-main
-├── feature/<feature-name>
-├── fix/<bug-name>
-└── refactor/<target>
-```
-
-### Commit Rules
-
-**Format**: `<type>(<scope>): <description in Japanese>`
-
-- 意味のあるコミットメッセージ
-- 小さな単位でコミット
+Git コミット形式とブランチルールは `rules/core-essentials.md` を参照。
 
 ### Pre-Commit Checklist
 

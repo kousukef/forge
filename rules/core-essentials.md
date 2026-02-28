@@ -1,6 +1,6 @@
 # Core Essentials
 
-常時読み込みされる最小限のルール。詳細は `~/.claude/reference/` を必要に応じて参照。
+常時読み込みされる最小限のルール。詳細は `reference/` を必要に応じて参照。
 
 ---
 
@@ -40,27 +40,52 @@
 
 ---
 
-## Git コミット形式
+## Skill Orchestration（1% ルール）
+
+**1% でも適用される可能性があれば、そのスキルを呼び出せ。**
+
+作業開始前に `forge-skill-orchestrator` でフェーズ判定 → ドメイン判定 → スキル特定を行う。サブエージェントにはスキル**名**を渡す（Claude Code が自動解決）。Main Agent が SKILL.md を Read してインライン展開することは禁止。
+
+---
+
+## Context Isolation Policy
+
+Main Agent はオーケストレーション専任。以下を厳守:
+
+| 禁止操作 | 代替手段 |
+|---|---|
+| Write/Edit で実装ファイル編集 | Task(implementer) に委譲 |
+| 実装ファイル（.ts/.tsx）の Read | Explore Agent / implementer に委譲 |
+| SKILL.md の Read | スキル名のみ決定、Claude Code が自動解決 |
+| `git diff`（内容表示） | `git diff --stat` のみ許可 |
+
+詳細: `reference/context-isolation.md`
+
+---
+
+## Git・コミット
 
 - 形式: `<type>(<scope>): <日本語の説明>`
 - type: `feat` / `fix` / `refactor` / `test` / `docs` / `chore` / `perf`
 - 1コミット = 1つの論理的変更、動く状態でコミット
+- PR説明は日本語
+- 小さく焦点を絞ったコミット
+- コミット前に `git diff` でレビュー
+
+---
+
+## コード品質
+
+- TypeScript strict mode 準拠
+- 既存のコード規約・パターンを踏襲
+- コードやコメントにエモジを入れない
+- TDD: RED → GREEN → REFACTOR
+- テストをスキップ・無効化して通過させない
+- TODO/モック/スタブを本実装に残さない
+- `npx tsc --noEmit` をコミット前に実行
 
 ---
 
 ## オンデマンドルール参照先
 
-作業対象に応じて `~/.claude/reference/` から必要なファイルを読み込むこと:
-
-| ファイル | 読み込むタイミング |
-|---|---|
-| `reference/typescript-rules.md` | TypeScript実装・型設計時 |
-| `reference/coding-standards.md` | コーディング規約の確認時 |
-| `reference/core-rules.md` | フェーズ管理・検証ゲート確認時 |
-| `reference/workflow-rules.md` | セッション管理・チェックポイント時 |
-| `reference/common/coding-style.md` | ファイルサイズ・命名規約確認時 |
-| `reference/common/testing.md` | テスト作成・TDD実践時 |
-| `reference/common/performance.md` | パフォーマンス最適化時 |
-| `reference/nextjs/conventions.md` | Next.js App Router作業時 |
-| `reference/prisma/conventions.md` | Prismaスキーマ・クエリ作業時 |
-| `reference/terraform/conventions.md` | Terraform IaC作業時 |
+作業対象に応じて `reference/` から必要なファイルを読み込むこと。参照テーブルは CLAUDE.md の Rules セクションを参照。
