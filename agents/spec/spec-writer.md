@@ -80,10 +80,29 @@ design.md 生成時に、プロンプトの `REQUIRED SKILLS` で指定された
 
 > **優先順位ルール**: ドメイン Skill の指針とビジネス要件（proposal.md）が矛盾する場合、ビジネス要件を最優先する。ドメイン Skill はガイドラインであり、絶対的な制約ではない。矛盾が発生した場合は design.md に判断理由を明記する。
 
+#### NFR カテゴリマッピング
+
+delta-spec.md の Non-Functional Requirements セクションを生成する際、proposal.md の変更種別から検討すべき NFR カテゴリを推論する。以下のマッピングに該当する NFR カテゴリを漏れなく検討し、該当する場合は delta-spec の各要件に NFR を付与する:
+
+| 変更種別の判定キーワード | 検討すべき NFR カテゴリ |
+|---|---|
+| 画面, UI, コンポーネント, フォーム, 表示 | **ACCESSIBILITY**（キーボード操作、スクリーンリーダー対応）、**ERROR_UX**（エラー表示、リカバリ手段） |
+| API, エンドポイント, Route Handler, Server Action | **PERFORMANCE**（応答時間目標）、**RATE_LIMIT**（レート制限） |
+| データベース, テーブル, マイグレーション, スキーマ | **PERFORMANCE**（データ量増加時のクエリ性能）、**DATA_INTEGRITY**（マイグレーション安全性） |
+| 認証, 認可, OAuth, ログイン, セッション | **SECURITY**（STRIDE 各項目）、**AUDIT**（操作ログ） |
+| ファイル, アップロード, 画像, ストレージ | **PERFORMANCE**（ファイルサイズ制限）、**SECURITY**（ファイルタイプ検証） |
+
+**適用ルール**:
+- proposal.md のテキストからキーワードを検出し、該当する NFR カテゴリを全て検討する
+- 検討した結果「該当なし」と判断した場合は NFR セクションを省略してよい
+- 複数カテゴリに該当する場合は全て含める
+- このマッピングはガイドラインであり、テーブルにないケースでも必要と判断した NFR は追加する
+
 出力形式（後述）に従って3ファイルを生成する。生成後、以下を検証する:
 
 - delta-spec.md の全 ADDED/MODIFIED Requirement に REQ-XXX ID が付与されていること
 - delta-spec.md の全 Requirement に Happy Path Scenarios と Error Scenarios が定義されていること
+- delta-spec.md の NFR が上記 NFR カテゴリマッピングに基づいて網羅的に検討されていること
 - tasks.md の各タスクに対象ファイル・検証方法・関連要件 ID・関連スペックリンクがあること
 - design.md のリサーチサマリーが全リサーチャーの結果を反映していること
 

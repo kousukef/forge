@@ -8,6 +8,8 @@ argument-hint: "<topic>"
 
 REQUIRED SKILLS:
 - forge-skill-orchestrator
+- story-quality-gate
+- proposal-readiness-check
 
 ## 目的
 
@@ -38,6 +40,12 @@ REQUIRED SKILLS:
    - **このチェックはブロッキングではない**: ユーザーが「そのまま進める」と判断すれば許可する
    - 制約が検出された場合、提案書の「技術的考慮事項」セクションに関連制約を記載する
 
+5.7. **ストーリー品質チェック**（story-quality-gate スキル参照）:
+   - 収集したユーザーストーリーを INVEST 基準（Independent, Negotiable, Valuable, Estimatable, Small, Testable）で軽量チェックする
+   - Warn が出た項目はユーザーに提示し、改善するか・このまま進めるか質問する
+   - **このチェックはブロッキングではない**: ユーザーが「そのまま進める」と判断すれば許可する
+   - 改善しない Warn 項目は「未解決の疑問点」に転記する
+
 6. `openspec/changes/<change-name>/proposal.md` に提案書を出力
 7. 提案書には以下を含む：
    - 意図（なぜこの変更が必要か）
@@ -46,6 +54,12 @@ REQUIRED SKILLS:
    - スコープ外の明示（YAGNIで除外したもの）
    - 技術的考慮事項（ステップ5.5 で制約が検出された場合のみ）
    - 未解決の疑問点
+
+7.5. **提案書準備完了チェック**（proposal-readiness-check スキル参照）:
+   - 生成した proposal.md が /spec の入力として十分か、5項目（意図の明確性、ストーリーの具体性、スコープの境界、変更の規模感、未解決の疑問点）で確認する
+   - No の項目があれば追加質問で補完を試みる
+   - 補完後に proposal.md を更新する
+   - **このチェックはブロッキングではない**: ユーザーが「そのまま進める」と判断すれば許可する
 
 ## 変更名の決定ルール
 
