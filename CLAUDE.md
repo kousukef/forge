@@ -6,7 +6,7 @@
 2. **Plan Before Execute**: 3ステップ以上の作業はタスクリストを作成してから実行する
 3. **Minimal Change**: 依頼された変更のみ実施。過剰な改善・リファクタ・コメント追加をしない
 4. **Action-Aware**: 現在のフェーズに合った作業を行う（実装中に仕様変更しない等）
-5. **Skill-First**: 作業開始前に `forge-skill-orchestrator` で適用スキルを判定し、呼び出す
+5. **Skill-First**: 適用可能なスキルを積極的に活用する（1% でも関連があれば呼び出す）
 6. **Context Isolation**: Main Agent はオーケストレーション専任。コード実装は全て Sub Agent / Agent Team に委譲する
 
 ---

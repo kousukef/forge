@@ -6,6 +6,9 @@ argument-hint: "<change-name>"
 
 # /review コマンド
 
+REQUIRED SKILLS:
+- forge-skill-orchestrator
+
 ## 目的
 
 実装済みコードを仕様準拠の観点を含めて多角的にレビューする。

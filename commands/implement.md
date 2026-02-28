@@ -6,6 +6,9 @@ argument-hint: "<change-name> [--teams|--agents]"
 
 # /implement コマンド
 
+REQUIRED SKILLS:
+- forge-skill-orchestrator
+
 ## 目的
 
 仕様書のタスクリストに基づいてTDD駆動でコードを実装する。
