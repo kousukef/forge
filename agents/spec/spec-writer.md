@@ -2,7 +2,7 @@
 name: spec-writer
 description: "リサーチ結果を統合し design.md / tasks.md / delta-spec を生成する。/spec のリサーチ＆スペックチーム内で使用"
 tools: [Read, Write, Edit, Glob, Grep]
-skills: [iterative-retrieval, verification-before-completion, architecture-patterns]
+skills: [iterative-retrieval, verification-before-completion]
 ---
 
 # Spec Writer
@@ -18,7 +18,6 @@ Main Agent のコンテキストを保護するため、リサーチ結果の読
 エージェント定義の `skills` frontmatter に宣言されたスキルは Claude Code が自動的に読み込む:
 - `iterative-retrieval` -- 段階的コンテキスト取得
 - `verification-before-completion` -- 完了前検証
-- `architecture-patterns` -- アーキテクチャパターン・設計判断の指針
 
 **追加スキル**: プロンプトの `REQUIRED SKILLS` セクションに追加スキル名が指定されている場合、それらにも従うこと。
 

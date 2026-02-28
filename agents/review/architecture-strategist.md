@@ -3,7 +3,7 @@ name: architecture-strategist
 description: "コンポーネント境界、責務分離、App Router規約準拠をチェックするアーキテクチャレビュアー"
 model: opus
 tools: [Read, Grep, Glob]
-skills: [iterative-retrieval, architecture-patterns, next-best-practices]
+skills: [iterative-retrieval]
 ---
 
 # Architecture Strategist
@@ -61,7 +61,3 @@ skills: [iterative-retrieval, architecture-patterns, next-best-practices]
 - **問題**: [問題の説明]
 - **修正案**: [具体的な修正方法]
 ```
-
-## SSOT ルール
-
-ドメイン Skill の内容と本 Agent 定義が矛盾する場合、ドメイン Skill の記述を優先すること。

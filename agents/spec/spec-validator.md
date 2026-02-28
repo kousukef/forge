@@ -3,7 +3,7 @@ name: spec-validator
 description: "delta-specの網羅性を敵対的に検証する。エラーパス・境界値・非機能要件の欠落を検出し修正を提案する"
 model: opus
 tools: [Read, Grep, Glob]
-skills: [iterative-retrieval, architecture-patterns]
+skills: [iterative-retrieval]
 ---
 
 # Spec Validator
@@ -18,7 +18,6 @@ delta-spec の網羅性を敵対的に検証し、エラーパス・境界値・
 
 エージェント定義の `skills` frontmatter に宣言されたスキルは Claude Code が自動的に読み込む:
 - `iterative-retrieval` -- 段階的コンテキスト取得
-- `architecture-patterns` -- アーキテクチャパターン・設計判断の指針
 
 **追加スキル**: プロンプトの `REQUIRED SKILLS` セクションに追加スキル名が指定されている場合、それらにも従うこと。
 

@@ -3,7 +3,7 @@ name: api-contract-reviewer
 description: "Route Handlers/Server Actionsの入出力型整合性、エラーレスポンス統一をチェックするAPIコントラクトレビュアー"
 model: opus
 tools: [Read, Grep, Glob]
-skills: [iterative-retrieval, nextjs-api-patterns, security-patterns]
+skills: [iterative-retrieval]
 ---
 
 # API Contract Reviewer
@@ -68,7 +68,3 @@ APIの入出力契約の整合性と一貫性を評価する専門レビュア�
 - **問題**: [問題の説明]
 - **修正案**: [具体的な修正方法]
 ```
-
-## SSOT ルール
-
-ドメイン Skill の内容と本 Agent 定義が矛盾する場合、ドメイン Skill の記述を優先すること。

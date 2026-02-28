@@ -102,10 +102,42 @@ REVIEW INSTRUCTION:
 
 **注意**: security-sentinel は全リスクレベルで常時起動。HIGH 以外では、該当しないレビュアーは起動しない（トークン節約とノイズ低減）。
 
+### Step 2c: レビュアー別ドメイン Skill 注入
+
+Step 2b で選択された各レビュアーのプロンプトに、`REQUIRED SKILLS` としてドメイン Skill を動的に注入する。
+
+#### レビュアー → Skill マッピング
+
+| レビュアー | 注入する Skill |
+|---|---|
+| security-sentinel | security-patterns |
+| architecture-strategist | architecture-patterns |
+| api-contract-reviewer | security-patterns |
+| prisma-guardian | prisma-expert, database-migrations |
+| terraform-reviewer | terraform-gcp-expert |
+| performance-oracle | (下記の追加ルール参照) |
+| type-safety-reviewer | (なし) |
+| spec-compliance-reviewer | (なし) |
+
+#### performance-oracle の追加 Skill ルール
+
+performance-oracle は複数ドメインにまたがるため、Step 2b の検出条件に基づき追加する:
+
+- `src/app/` 配下の `.tsx` が含まれる → `vercel-react-best-practices`
+- `.prisma` / `prisma/` 配下が含まれる → `prisma-expert`
+
+#### プロンプトへの注入形式
+
+```
+REQUIRED SKILLS:
+- iterative-retrieval
+- [マッピングで決定したドメイン Skill]
+```
+
 ### Step 3: レビュアー並列実行
 
 Step 2 で選択されたレビュアーを**並列で** Task として起動する。
-各レビュアーには Step 1 で準備した REVIEW CONTEXT を注入する。
+各レビュアーには Step 1 で準備した REVIEW CONTEXT と Step 2c で決定した REQUIRED SKILLS を注入する。
 
 **レビュアーの役割（参考）:**
 

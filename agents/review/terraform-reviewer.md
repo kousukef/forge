@@ -3,7 +3,7 @@ name: terraform-reviewer
 description: "IaCベストプラクティス、GCPリソース設定、セキュリティをチェックするTerraformレビュアー"
 model: opus
 tools: [Read, Grep, Glob]
-skills: [iterative-retrieval, terraform-gcp-expert]
+skills: [iterative-retrieval]
 ---
 
 # Terraform Reviewer
@@ -63,7 +63,3 @@ Terraformコードの品質とセキュリティを評価する専門レビュ�
 - **問題**: [問題の説明]
 - **修正案**: [具体的な修正方法]
 ```
-
-## SSOT ルール
-
-ドメイン Skill の内容と本 Agent 定義が矛盾する場合、ドメイン Skill の記述を優先すること。

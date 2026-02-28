@@ -3,7 +3,7 @@ name: security-sentinel
 description: "OWASP Top 10、シークレット検出、認証・認可の穴をチェックするセキュリティレビュアー"
 model: opus
 tools: [Read, Grep, Glob]
-skills: [iterative-retrieval, security-patterns]
+skills: [iterative-retrieval]
 ---
 
 # Security Sentinel
@@ -76,7 +76,3 @@ skills: [iterative-retrieval, security-patterns]
 ```
 ⚠ エスカレーション対象: この指摘はアーキテクチャ変更を伴う可能性があるため、自動修正ではなくユーザーの判断が必要です。
 ```
-
-## SSOT ルール
-
-ドメイン Skill の内容と本 Agent 定義が矛盾する場合、ドメイン Skill の記述を優先すること。
