@@ -80,29 +80,47 @@ design.md 生成時に、プロンプトの `REQUIRED SKILLS` で指定された
 
 > **優先順位ルール**: ドメイン Skill の指針とビジネス要件（proposal.md）が矛盾する場合、ビジネス要件を最優先する。ドメイン Skill はガイドラインであり、絶対的な制約ではない。矛盾が発生した場合は design.md に判断理由を明記する。
 
-#### NFR カテゴリマッピング
+#### NFR カテゴリ選定
 
-delta-spec.md の Non-Functional Requirements セクションを生成する際、proposal.md の変更種別から検討すべき NFR カテゴリを推論する。以下のマッピングに該当する NFR カテゴリを漏れなく検討し、該当する場合は delta-spec の各要件に NFR を付与する:
+delta-spec.md の Non-Functional Requirements セクションを生成する際、proposal.md の変更内容を意味的に分析し、関連する NFR カテゴリを選定する。
 
-| 変更種別の判定キーワード | 検討すべき NFR カテゴリ |
+**NFR カテゴリカタログ**:
+
+| カテゴリ | 説明 |
 |---|---|
-| 画面, UI, コンポーネント, フォーム, 表示 | **ACCESSIBILITY**（キーボード操作、スクリーンリーダー対応）、**ERROR_UX**（エラー表示、リカバリ手段） |
-| API, エンドポイント, Route Handler, Server Action | **PERFORMANCE**（応答時間目標）、**RATE_LIMIT**（レート制限） |
-| データベース, テーブル, マイグレーション, スキーマ | **PERFORMANCE**（データ量増加時のクエリ性能）、**DATA_INTEGRITY**（マイグレーション安全性） |
-| 認証, 認可, OAuth, ログイン, セッション | **SECURITY**（STRIDE 各項目）、**AUDIT**（操作ログ） |
-| ファイル, アップロード, 画像, ストレージ | **PERFORMANCE**（ファイルサイズ制限）、**SECURITY**（ファイルタイプ検証） |
+| PERFORMANCE | 応答時間、スループット、レート制限、クエリ性能、Core Web Vitals、バンドルサイズ |
+| SECURITY | 入力検証、認可、STRIDE脅威、ファイルタイプ検証、IAM、監査証跡、abuse prevention |
+| ACCESSIBILITY | キーボード操作、スクリーンリーダー対応、ARIA属性、カラーコントラスト |
+| RELIABILITY | タイムアウト、リトライ、フォールバック、冪等性、graceful degradation |
+| DATA_INTEGRITY | マイグレーション安全性、整合性制約、部分失敗時のロールバック |
+| ERROR_UX | エラー表示、リカバリ手段、部分失敗時のユーザーフィードバック |
+| SCALABILITY | データ量増加時の性能維持、同時接続ユーザー数、トラフィックスパイク耐性 |
+| COMPATIBILITY | API後方互換性、ブラウザサポート、既存機能との共存 |
+| AVAILABILITY | ゼロダウンタイムデプロイ、ヘルスチェック、ロールバック手順 |
+| OBSERVABILITY | ログ出力、メトリクス、アラート閾値、操作ログ |
+
+**選定ガイド** — proposal.md を読み、以下の問いで該当カテゴリを判定する:
+
+1. **ユーザーに見える画面を変更するか？** → PERFORMANCE（CWV）, ACCESSIBILITY, ERROR_UX
+2. **外部からリクエストを受けるエンドポイントを追加・変更するか？** → PERFORMANCE, SECURITY
+3. **データベーススキーマやクエリパターンを変更するか？** → PERFORMANCE, DATA_INTEGRITY, SCALABILITY
+4. **認証・認可・機密データに触れるか？** → SECURITY
+5. **外部サービスやAPIに依存するか？** → RELIABILITY, PERFORMANCE, OBSERVABILITY
+6. **大量データを一括処理するか？** → SCALABILITY, ERROR_UX, RELIABILITY
+7. **インフラ・デプロイ構成を変更するか？** → AVAILABILITY, SECURITY, OBSERVABILITY
+8. **既存のAPIや機能のインターフェースを変更するか？** → COMPATIBILITY
 
 **適用ルール**:
-- proposal.md のテキストからキーワードを検出し、該当する NFR カテゴリを全て検討する
-- 検討した結果「該当なし」と判断した場合は NFR セクションを省略してよい
+- 上記の問いを全て検討し、該当するカテゴリの NFR を delta-spec の各要件に付与する
 - 複数カテゴリに該当する場合は全て含める
-- このマッピングはガイドラインであり、テーブルにないケースでも必要と判断した NFR は追加する
+- 全ての問いに「いいえ」の場合は NFR セクションを省略してよい
+- カタログにないカテゴリでも、変更内容から必要と判断した NFR は追加する
 
 出力形式（後述）に従って3ファイルを生成する。生成後、以下を検証する:
 
 - delta-spec.md の全 ADDED/MODIFIED Requirement に REQ-XXX ID が付与されていること
 - delta-spec.md の全 Requirement に Happy Path Scenarios と Error Scenarios が定義されていること
-- delta-spec.md の NFR が上記 NFR カテゴリマッピングに基づいて網羅的に検討されていること
+- delta-spec.md の NFR が上記カテゴリカタログと選定ガイドに基づいて網羅的に検討されていること
 - tasks.md の各タスクに対象ファイル・検証方法・関連要件 ID・関連スペックリンクがあること
 - design.md のリサーチサマリーが全リサーチャーの結果を反映していること
 
