@@ -6,6 +6,9 @@ argument-hint: "<change-name> [--teams|--agents]"
 
 # /spec コマンド
 
+REQUIRED SKILLS:
+- forge-skill-orchestrator
+
 ## 目的
 
 提案書（`openspec/changes/<change-name>/proposal.md`）から詳細なデルタスペック・技術設計・実行可能なタスクリストを作成する。
@@ -82,32 +85,35 @@ proposal.md のキーワードからドメインを推論し、spec-writer / spe
 
 #### キーワード推論テーブル
 
-| キーワード | ドメイン | 注入する Skill |
+| キーワード | ドメイン | 読み込む design.md |
 |---|---|---|
-| データベース, テーブル, マイグレーション | prisma-database | `prisma-expert/design`, `database-migrations/design` |
-| API, エンドポイント, Route Handler | typescript-backend | `nextjs-api-patterns/design`, `security-patterns/design` |
-| 画面, コンポーネント, UI | nextjs-frontend | `next-best-practices/design`, `vercel-react-best-practices/design`, `vercel-composition-patterns/design` |
-| 認証, 認可, OAuth | security | `security-patterns/design` |
-| インフラ, Terraform, GCP | terraform-infrastructure | `terraform-gcp-expert/design` |
+| データベース, テーブル, マイグレーション | prisma-database | `prisma-expert/design.md`, `database-migrations/design.md` |
+| API, エンドポイント, Route Handler | typescript-backend | `nextjs-api-patterns/design.md`, `security-patterns/design.md` |
+| 画面, コンポーネント, UI | nextjs-frontend | `next-best-practices/design.md`, `vercel-react-best-practices/design.md`, `vercel-composition-patterns/design.md` |
+| 認証, 認可, OAuth | security | `security-patterns/design.md` |
+| インフラ, Terraform, GCP | terraform-infrastructure | `terraform-gcp-expert/design.md` |
 
 #### 判定ルール
 
 1. proposal.md のテキストをスキャンし、キーワード推論テーブルに該当するキーワードを検出する
-2. 該当する全ドメインの Skill を Union で含める（複数ドメイン該当時は全て含める）
-3. `architecture-patterns/design` を常に含める（proposal.md の内容に関わらず必須）
-4. 注入する Skill が6個以上になる場合、最大5個に制限する（`architecture-patterns/design` は必須枠として確保し、残り4枠をテーブル上位から選択）
-5. キーワードが一つも該当しない場合、`architecture-patterns/design` のみを注入する
+2. 該当する全ドメインの design.md を Union で含める（複数ドメイン該当時は全て含める）
+3. `architecture-patterns/design.md` を常に含める（proposal.md の内容に関わらず必須）
+4. 注入する design.md が6個以上になる場合、最大5個に制限する（`architecture-patterns/design.md` は必須枠として確保し、残り4枠をテーブル上位から選択）
+5. キーワードが一つも該当しない場合、`architecture-patterns/design.md` のみを注入する
 
 #### Skill の注入方法
 
-決定したドメイン Skill を、spec-writer / spec-validator のプロンプトの `REQUIRED SKILLS` セクションに追加する:
+決定したドメイン Skill の design.md を、spec-writer / spec-validator のプロンプトに以下の形式で記載する:
 
 ```
 REQUIRED SKILLS:
 - iterative-retrieval
 - verification-before-completion
-- architecture-patterns/design
-- [該当ドメイン Skill/design ...]
+
+DOMAIN CONTEXT FILES (Read ツールで直接読み込むこと):
+- ~/.claude/skills/architecture-patterns/design.md
+- ~/.claude/skills/[該当ドメイン Skill]/design.md
+※ ファイルが存在しない場合は Skill ツールで該当スキルを呼び出す
 ```
 
 ### Phase 1.5: リサーチ結果の検証（Sub Agents モードのみ）

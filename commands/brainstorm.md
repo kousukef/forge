@@ -6,6 +6,9 @@ argument-hint: "<topic>"
 
 # /brainstorm コマンド
 
+REQUIRED SKILLS:
+- forge-skill-orchestrator
+
 ## 目的
 
 機能設計の前にソクラテス式対話で要件を深掘りし、ミニマルで的確な提案書を作成する。
@@ -27,7 +30,8 @@ argument-hint: "<topic>"
 
 5.5. **技術的制約チェック**（constraints.md 参照）:
    - 対象領域のキーワードからドメインを推論する（例: DB関連→`prisma-expert`、API関連→`nextjs-api-patterns`）
-   - 推論されたドメイン Skill の `constraints.md` を参照する（存在する場合のみ。存在しない場合はスキップ）
+   - 推論されたドメイン Skill の `constraints.md` を Read ツールで直接読み込む（パス: `~/.claude/skills/<skill-name>/constraints.md`）
+   - ファイルが存在しない場合はスキップする
    - **constraints.md のみ参照する**（design.md は参照しない。brainstorm は自由な発想を優先するため）
    - 要件と技術的制約の矛盾をチェックする
    - 矛盾が検出された場合: 「この要件は技術的制約 [X] と矛盾する可能性があります」とユーザーに報告し、要件の修正を検討するよう提案する

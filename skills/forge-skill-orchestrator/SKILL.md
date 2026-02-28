@@ -16,20 +16,20 @@ description: "Use at the START of every task, before writing any code, running t
 
 現在のコマンド名または作業内容からフェーズを判定する:
 
-| コマンド / 作業内容 | フェーズ | Domain Skill サフィックス |
+| コマンド / 作業内容 | フェーズ | Domain Skill 読み込み |
 |---|---|---|
-| `/brainstorm` | design | `/constraints` |
-| `/spec` | spec | `/design` |
-| `/implement` | implementation | なし（SKILL.md 全体） |
-| `/review` | review | なし（SKILL.md 全体） |
-| `/test` | test | なし（SKILL.md 全体） |
-| `/compound` | documentation | なし（SKILL.md 全体） |
+| `/brainstorm` | design | Read: `constraints.md` |
+| `/spec` | spec | Read: `design.md` |
+| `/implement` | implementation | Skill ツール（SKILL.md 全体） |
+| `/review` | review | Skill ツール（SKILL.md 全体） |
+| `/test` | test | Skill ツール（SKILL.md 全体） |
+| `/compound` | documentation | Skill ツール（SKILL.md 全体） |
 | `/ship` | all（フェーズ遷移あり） | フェーズごとに切替 |
-| バグ修正・エラー対応 | debug | なし（SKILL.md 全体） |
-| コード変更・新機能追加 | implementation | なし（SKILL.md 全体） |
-| コードレビュー依頼 | review | なし（SKILL.md 全体） |
-| テスト実行・修正 | test | なし（SKILL.md 全体） |
-| 設計・要件整理 | design / spec | `/design` |
+| バグ修正・エラー対応 | debug | Skill ツール（SKILL.md 全体） |
+| コード変更・新機能追加 | implementation | Skill ツール（SKILL.md 全体） |
+| コードレビュー依頼 | review | Skill ツール（SKILL.md 全体） |
+| テスト実行・修正 | test | Skill ツール（SKILL.md 全体） |
+| 設計・要件整理 | design / spec | Read: `design.md` |
 
 ## ドメイン検出テーブル
 
@@ -65,9 +65,10 @@ description: "Use at the START of every task, before writing any code, running t
 サブエージェントには**スキル名**を渡す。Claude Code がスキル名から自動的にスキル内容を解決・読み込みする。
 
 1. **親コマンド（`/implement`, `/spec` 等）の責務**:
-   - ドメイン・フェーズから適用スキル名を決定する
-   - フェーズ検出テーブルの「Domain Skill サフィックス」列に基づき、ドメイン Skill 名にサフィックスを付与する
-   - サブエージェントのプロンプトにスキル名を記載する
+   - ドメイン・フェーズから適用スキルを決定する
+   - フェーズ検出テーブルの「Domain Skill 読み込み」列に基づき、読み込み方式を決定する
+     - Read の場合: DOMAIN CONTEXT FILES として Read パスをプロンプトに記載する
+     - Skill ツールの場合: REQUIRED SKILLS としてスキル名をプロンプトに記載する
    - SKILL.md の内容を自分で読む必要はない
 
 2. **プロンプト記載テンプレート**:
@@ -77,8 +78,13 @@ description: "Use at the START of every task, before writing any code, running t
    REQUIRED SKILLS:
    - iterative-retrieval
    - verification-before-completion
-   - [ドメイン固有スキル名/サフィックス]
-   例: prisma-expert/design, architecture-patterns/design
+
+   DOMAIN CONTEXT FILES (Read ツールで直接読み込むこと):
+   - ~/.claude/skills/<skill-name>/<phase-file>.md
+   例:
+   - ~/.claude/skills/prisma-expert/design.md
+   - ~/.claude/skills/architecture-patterns/design.md
+   ※ ファイルが存在しない場合は Skill ツールで <skill-name> を呼び出す
    ```
 
    **Standard テンプレート**（`/implement`, `/review` 等 用）:
@@ -91,12 +97,13 @@ description: "Use at the START of every task, before writing any code, running t
    例: prisma-expert, architecture-patterns
    ```
 
-   > Methodology Skills にはサフィックスを付けない。サフィックスはドメイン Skill のみに適用する。
+   > Methodology Skills は常に Skill ツールで呼び出す。Phase-Aware ファイル（Read）はドメイン Skill のみに適用する。
 
 3. **スキル解決の優先順位**:
    - プロジェクト固有スキル（`<project>/.claude/skills/`）が優先
    - グローバルスキル（`~/.claude/skills/`）がフォールバック
-   - Claude Code が自動的に解決するため、パス指定は不要
+   - Skill ツール: Claude Code が自動解決するため、パス指定は不要
+   - Read ツール（Phase-Aware）: プロジェクト固有パスを先に確認し、なければグローバルパスを使用
 
 4. **サブエージェントの責務**:
    - エージェント定義の `skills` frontmatter で宣言されたスキルに従う
@@ -104,13 +111,13 @@ description: "Use at the START of every task, before writing any code, running t
 
 ## フォールバック機構
 
-サフィックス付きスキル名（例: `prisma-expert/design`）で指定された派生ファイルが存在しない場合:
+Phase-Aware ファイル（例: `~/.claude/skills/prisma-expert/design.md`）を Read ツールで読み込もうとしてファイルが存在しない場合:
 
-1. **SKILL.md にフォールバック**: サフィックスを除去し、スキル名のみ（例: `prisma-expert`）で解決する。SKILL.md 全体が読み込まれる
-2. **警告を出力**: 「[skill-name] の [suffix].md が未作成です。`/skill-format <skill-name>` で分割してください」
+1. **SKILL.md にフォールバック**: Skill ツールでスキル名（例: `prisma-expert`）を呼び出し、SKILL.md 全体を読み込む
+2. **警告を出力**: 「[skill-name] の [phase-file].md が未作成です。`/skill-format <skill-name>` で分割してください」
 
 > フォールバックはファイル分割未実施の Skill への後方互換性を確保するための機構。
-> 分割が完了した Skill では常にサフィックス付きファイルが優先される。
+> 分割が完了した Skill では常に Phase-Aware ファイルが優先される。
 
 ## 決定フローチャート
 
@@ -127,11 +134,13 @@ START
   │     ├─ Methodology Skills: phases[] でレジストリ照合 → matched_methodology[]
   │     └─ Domain Skills: domains[] から Auto-Discovery（Claude Code が自動検出） → matched_domain[]
   │
-  ├─ 4. サフィックス付与
-  │     ├─ Methodology Skills: サフィックスなし（常に SKILL.md 全体）
-  │     └─ Domain Skills: suffix が設定されている場合 → matched_domain[] の各スキル名にサフィックスを付与
-  │        例: suffix="/design" → prisma-expert → prisma-expert/design
-  │        派生ファイルが存在しない場合はフォールバック機構を適用
+  ├─ 4. 読み込み方式決定
+  │     ├─ Methodology Skills: Skill ツールで呼び出し（常に SKILL.md 全体）
+  │     └─ Domain Skills:
+  │        ├─ Phase-Aware ファイルあり → Read ツールでファイルパスを指定
+  │        │  例: phase-file="design" → ~/.claude/skills/prisma-expert/design.md
+  │        │  ファイルが存在しない場合はフォールバック機構を適用
+  │        └─ Phase-Aware ファイルなし → Skill ツールで呼び出し（SKILL.md 全体）
   │
   ├─ 5. Union
   │     └─ skills_to_invoke = matched_methodology ∪ matched_domain（サフィックス付き）
@@ -146,7 +155,9 @@ START
   │
   └─ 8. 呼び出し
         ├─ メインセッション: `Skill` ツールで各スキルを名前で呼び出す
-        └─ サブエージェント: プロンプトにスキル名を記載（Phase-Aware or Standard テンプレート使用）
+        └─ サブエージェント: プロンプトにテンプレートを記載
+              ├─ Methodology Skills + Phase-Aware なし Domain Skills → REQUIRED SKILLS に記載
+              └─ Phase-Aware あり Domain Skills → DOMAIN CONTEXT FILES に Read パスを記載
 ```
 
 ## 使用例
@@ -161,18 +172,23 @@ START
 
 ### 例 2: `/spec` で Prisma 関連の仕様策定時（Phase-Aware テンプレート）
 
-1. フェーズ: `spec` → サフィックス: `/design`
+1. フェーズ: `spec` → Phase-Aware ファイル: `design.md`
 2. ドメイン: proposal.md のキーワードから `prisma-database` を推論
-3. Methodology Skills: `iterative-retrieval`, `verification-before-completion`（サフィックスなし）
-4. Domain Skills: `prisma-expert/design`, `database-migrations/design`, `architecture-patterns/design`
+3. Methodology Skills（REQUIRED SKILLS）: `iterative-retrieval`, `verification-before-completion`
+4. Domain Skills（DOMAIN CONTEXT FILES）:
+   - `~/.claude/skills/prisma-expert/design.md`
+   - `~/.claude/skills/database-migrations/design.md`
+   - `~/.claude/skills/architecture-patterns/design.md`
 5. → コンテキスト効率: ~100行/Skill x 3 = ~300行（従来 ~1,500行 → 80%削減）
 
 ### 例 3: `/brainstorm` で認証機能のアイデア出し（Phase-Aware テンプレート）
 
-1. フェーズ: `design` → サフィックス: `/constraints`
+1. フェーズ: `design` → Phase-Aware ファイル: `constraints.md`
 2. ドメイン: 要件キーワードから `security` を推論
-3. Methodology Skills: `iterative-retrieval`（サフィックスなし）
-4. Domain Skills: `security-patterns/constraints`, `architecture-patterns/constraints`
+3. Methodology Skills（REQUIRED SKILLS）: `iterative-retrieval`
+4. Domain Skills（DOMAIN CONTEXT FILES）:
+   - `~/.claude/skills/security-patterns/constraints.md`
+   - `~/.claude/skills/architecture-patterns/constraints.md`
 5. → コンテキスト効率: ~25行/Skill x 2 = ~50行（従来 ~900行 → 94%削減）
 
 ### 例 4: Prisma スキーマ変更を含むデバッグ時（Standard テンプレート）

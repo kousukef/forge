@@ -432,11 +432,13 @@ skills/<skill-name>/
 
 ### スキル注入メカニズム
 
-Sub Agent にはスキル**名**のみを渡します。Claude Code がスキル名からパスを自動解決し、読み込みます。`forge-skill-orchestrator` がフェーズを検出し、ドメインスキルに適切なサフィックス（`/constraints`, `/design`, またはなし）を付与します。
+`forge-skill-orchestrator` がフェーズを検出し、ドメインスキルの読み込み方式を決定します。
 
+- **Skill ツール呼び出し**（`/implement`, `/review` 等）: スキル名のみを渡し、Claude Code が SKILL.md を自動解決
+- **Read ツール読み込み**（`/brainstorm`, `/spec`）: Phase-Aware ファイル（`constraints.md` / `design.md`）のパスを直接指定
 - プロジェクト固有: `<project>/.claude/skills/`（優先度 1）
 - グローバル: `~/.claude/skills/`（優先度 2）
-- フォールバック: サフィックス付きファイルが存在しない場合は SKILL.md を使用
+- フォールバック: Phase-Aware ファイルが存在しない場合は Skill ツールで SKILL.md を使用
 
 ---
 
