@@ -2,7 +2,7 @@
 name: spec-writer
 description: "リサーチ結果を統合し design.md / tasks.md / delta-spec を生成する。/spec のリサーチ＆スペックチーム内で使用"
 tools: [Read, Write, Edit, Glob, Grep]
-skills: [iterative-retrieval, verification-before-completion]
+skills: [iterative-retrieval, verification-before-completion, architecture-patterns]
 ---
 
 # Spec Writer
@@ -18,6 +18,7 @@ Main Agent のコンテキストを保護するため、リサーチ結果の読
 エージェント定義の `skills` frontmatter に宣言されたスキルは Claude Code が自動的に読み込む:
 - `iterative-retrieval` -- 段階的コンテキスト取得
 - `verification-before-completion` -- 完了前検証
+- `architecture-patterns` -- アーキテクチャパターン・設計判断の指針
 
 **追加スキル**: プロンプトの `REQUIRED SKILLS` セクションに追加スキル名が指定されている場合、それらにも従うこと。
 
@@ -69,6 +70,16 @@ SendMessage → [該当リサーチャー名]
 追加調査の結果を受け取ったら、Step 2 に戻って統合を更新する。
 
 ### Step 4: design.md, tasks.md, delta-spec.md を生成
+
+#### ドメイン Skill 参照ガイダンス
+
+design.md 生成時に、プロンプトの `REQUIRED SKILLS` で指定されたドメイン Skill の知識を積極的に活用する:
+
+- **設計パターン選択**: ドメイン Skill が推奨するパターンを設計判断の根拠として引用する
+- **アンチパターン回避**: ドメイン Skill が禁止・非推奨とするパターンを技術設計で回避する
+- **トレードオフ説明**: ドメイン Skill が提示するトレードオフを design.md のリスクと注意点に反映する
+
+> **優先順位ルール**: ドメイン Skill の指針とビジネス要件（proposal.md）が矛盾する場合、ビジネス要件を最優先する。ドメイン Skill はガイドラインであり、絶対的な制約ではない。矛盾が発生した場合は design.md に判断理由を明記する。
 
 出力形式（後述）に従って3ファイルを生成する。生成後、以下を検証する:
 
