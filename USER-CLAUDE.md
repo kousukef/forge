@@ -23,7 +23,23 @@
 - `/ship` は上記を連鎖実行する完全自律パイプライン
 - `/brainstorm` と `/spec`（spec-validate 含む）の後はユーザー承認必須
 - `/implement` 以降は自律実行（テスト失敗時は最大3回リトライ）
-- OpenSpec 構造は各プロジェクトの `openspec/` を参照
+
+### OpenSpec 構造
+
+```
+openspec/
+├── project.md              # プロジェクトコンテキスト
+├── specs/                  # 累積スペック（マージ済みの正式仕様）
+└── changes/                # 変更単位の作業ディレクトリ
+    ├── <change-name>/      # アクティブな変更
+    │   ├── proposal.md     # /brainstorm で生成
+    │   ├── design.md       # /spec で生成
+    │   ├── tasks.md        # /spec で生成
+    │   ├── specs/          # デルタスペック（/spec で生成）
+    │   ├── interpretations/ # 仕様解釈ログ（/implement で生成）コミット対象外、/compound 後に削除
+    │   └── reviews/         # レビュー結果（/review で生成）コミット対象外、/compound 後に削除
+    └── archive/            # /compound で完了分をアーカイブ
+```
 
 ---
 
