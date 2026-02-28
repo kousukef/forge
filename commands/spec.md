@@ -6,6 +6,9 @@ argument-hint: "<change-name> [--teams|--agents]"
 
 # /spec コマンド
 
+REQUIRED SKILLS:
+- forge-skill-orchestrator
+
 ## 目的
 
 提案書（`openspec/changes/<change-name>/proposal.md`）から詳細なデルタスペック・技術設計・実行可能なタスクリストを作成する。
@@ -76,6 +79,43 @@ Main Agent（チームリーダー）
    - `openspec/specs/` の既存スペックを読み込み、関連する要件とシナリオを抽出
 4. **compound-learnings-researcher** -- `docs/compound/` 配下の過去の学びを検索し、関連する教訓を抽出
 
+### Phase 1.7: ドメイン判定
+
+proposal.md のキーワードからドメインを推論し、spec-writer / spec-validator に渡すドメイン Skill を決定する。
+
+#### キーワード推論テーブル
+
+| キーワード | ドメイン | 読み込む design.md |
+|---|---|---|
+| データベース, テーブル, マイグレーション | prisma-database | `prisma-expert/design.md`, `database-migrations/design.md` |
+| API, エンドポイント, Route Handler | typescript-backend | `nextjs-api-patterns/design.md`, `security-patterns/design.md` |
+| 画面, コンポーネント, UI | nextjs-frontend | `next-best-practices/design.md`, `vercel-react-best-practices/design.md`, `vercel-composition-patterns/design.md` |
+| 認証, 認可, OAuth | security | `security-patterns/design.md` |
+| インフラ, Terraform, GCP | terraform-infrastructure | `terraform-gcp-expert/design.md` |
+
+#### 判定ルール
+
+1. proposal.md のテキストをスキャンし、キーワード推論テーブルに該当するキーワードを検出する
+2. 該当する全ドメインの design.md を Union で含める（複数ドメイン該当時は全て含める）
+3. `architecture-patterns/design.md` を常に含める（proposal.md の内容に関わらず必須）
+4. 注入する design.md が6個以上になる場合、最大5個に制限する（`architecture-patterns/design.md` は必須枠として確保し、残り4枠をテーブル上位から選択）
+5. キーワードが一つも該当しない場合、`architecture-patterns/design.md` のみを注入する
+
+#### Skill の注入方法
+
+決定したドメイン Skill の design.md を、spec-writer / spec-validator のプロンプトに以下の形式で記載する:
+
+```
+REQUIRED SKILLS:
+- iterative-retrieval
+- verification-before-completion
+
+DOMAIN CONTEXT FILES (Read ツールで直接読み込むこと):
+- ~/.claude/skills/architecture-patterns/design.md
+- ~/.claude/skills/[該当ドメイン Skill]/design.md
+※ ファイルが存在しない場合は Skill ツールで該当スキルを呼び出す
+```
+
 ### Phase 1.5: リサーチ結果の検証（Sub Agents モードのみ）
 
 Teams モードでは spec-writer がチーム内で検証を実施するため、このフェーズはスキップする。
@@ -109,8 +149,8 @@ spec-validator を起動し、delta-spec の網羅性を敵対的に検証する
 **Sub Agents モード**: Task(spec-validator) を起動する。入力として change-name を渡す。
 
 spec-validator は以下を検証する:
-- EARS ベースの 4 品質基準（テスト可能性、振る舞い中心、一意解釈性、十分な完全性）
-- 7 つの検証項目（エラーシナリオ確認、境界値検出、非機能要件確認、シナリオ間矛盾検出、既存スペック整合性、未指定シナリオ列挙、タスク粒度検証）
+- EARS + Google Design Review 品質基準（Correctness、テスト可能性、振る舞い中心、Clarity、Completeness、Consistency）
+- 9 つの検証項目（エラーシナリオ確認、境界値検出、非機能要件確認、シナリオ間矛盾検出、既存スペック整合性、未指定シナリオ列挙、タスク粒度検証、STRIDE 簡易チェック、Last Responsible Moment）
 
 ### Phase 4: 修正ループ
 

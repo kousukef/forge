@@ -6,21 +6,15 @@
 2. **Plan Before Execute**: 3ステップ以上の作業はタスクリストを作成してから実行する
 3. **Minimal Change**: 依頼された変更のみ実施。過剰な改善・リファクタ・コメント追加をしない
 4. **Action-Aware**: 現在のフェーズに合った作業を行う（実装中に仕様変更しない等）
-5. **Skill-First**: 作業開始前に `forge-skill-orchestrator` で適用スキルを判定し、呼び出す
-6. **Context Isolation**: Main Agent はオーケストレーション専任。コード実装・スキル内容の読み込みは全て Sub Agent / Agent Team に委譲し、自身のコンテキストウィンドウを保護する
+5. **Skill-First**: 適用可能なスキルを積極的に活用する（1% でも関連があれば呼び出す）
+6. **Context Isolation**: Main Agent はオーケストレーション専任。コード実装は全て Sub Agent / Agent Team に委譲する
 
 ---
 
 ## Forge ワークフロー
 
-### コマンドパイプライン
-
 ```
-/brainstorm → /spec → [spec-validate] → [ユーザー承認] → /implement(interpret-first) → /review(spec-aware) → /test → /compound(learning-router)
-     │            │         │                                    │                           │                    │         │
-  proposal.md  delta-spec  敵対的検証                     Interpretation Log +          仕様コンテキスト注入   全テスト   学び分類+
-              design.md   + 修正ループ                    TDD実装 RED→GREEN             動的レビュアー選択    実行証明  ルーティング+
-              tasks.md                                    →REFACTOR                     カバレッジマトリクス             スペックマージ
+/brainstorm → /spec → [spec-validate] → [承認] → /implement → /review → /test → /compound
 ```
 
 - `/ship` は上記を連鎖実行する完全自律パイプライン
@@ -48,35 +42,70 @@ openspec/
 
 ## Rules
 
-常時読み込み: `rules/core-essentials.md`（エスカレーション・セキュリティ・Skill Orchestration・Context Isolation・Git・コード品質）
+常時読み込み: `rules/core-essentials.md`（エスカレーション・セキュリティ・Skill 1%ルール・Context Isolation・Git・コード品質）
 
 詳細ルールは `reference/` にオンデマンド配置。作業対象に応じて必要なファイルを読み込む:
 
-| Reference File                       | 読み込むタイミング                 |
-| ------------------------------------ | ---------------------------------- |
-| `reference/typescript-rules.md`      | TypeScript実装・型設計時           |
-| `reference/coding-standards.md`      | コーディング規約の確認時           |
-| `reference/core-rules.md`            | フェーズ管理・検証ゲート確認時     |
-| `reference/workflow-rules.md`        | セッション管理・チェックポイント時 |
-| `reference/common/coding-style.md`   | ファイルサイズ・命名規約確認時     |
-| `reference/common/testing.md`        | テスト作成・TDD実践時              |
-| `reference/common/performance.md`    | パフォーマンス最適化時             |
-| `reference/nextjs/conventions.md`    | Next.js App Router作業時           |
-| `reference/prisma/conventions.md`    | Prismaスキーマ・クエリ作業時       |
-| `reference/terraform/conventions.md` | Terraform IaC作業時                |
+| Reference File | タイミング |
+|---|---|
+| `reference/typescript-rules.md` | TypeScript実装・型設計 |
+| `reference/coding-standards.md` | コーディング規約確認 |
+| `reference/core-rules.md` | フェーズ管理・検証ゲート |
+| `reference/workflow-rules.md` | セッション管理 |
+| `reference/common/coding-style.md` | ファイルサイズ・命名規約 |
+| `reference/common/testing.md` | テスト作成・TDD |
+| `reference/common/performance.md` | パフォーマンス最適化 |
+| `reference/nextjs/conventions.md` | Next.js App Router |
+| `reference/prisma/conventions.md` | Prisma |
+| `reference/terraform/conventions.md` | Terraform |
 
 ---
 
-## Agents・Skills・Hooks
+## Available Agents
 
-エージェント定義は `agents/` を参照。スキル定義は `skills/`（プロジェクト固有）と `~/.claude/skills/`（グローバル）から自動検出される。スキルは**名前**で参照する（パスの指定は不要）。
+エージェント定義は `~/.claude/agents/` を参照。
 
-フック定義は `hooks/` を参照。Write前後・Bash前にガードレールが自動適用される。
+| カテゴリ | Agents |
+|---|---|
+| リサーチ | stack-docs-researcher, web-researcher, codebase-analyzer, compound-learnings-researcher |
+| スペック | spec-writer, spec-validator(opus) |
+| オーケストレーション | implement-orchestrator（`claude --agent` メインスレッド専用） |
+| 実装 | implementer, spec-compliance-reviewer(opus), build-error-resolver |
+| レビュー(opus) | security-sentinel, performance-oracle, architecture-strategist, prisma-guardian, terraform-reviewer, type-safety-reviewer, api-contract-reviewer, review-aggregator |
+
+---
+
+## Available Skills
+
+グローバル: `~/.claude/skills/` / プロジェクト固有: `<project>/.claude/skills/`（優先）。スキルは**名前**で参照する。
+
+| カテゴリ | Skills |
+|---|---|
+| 方法論 | test-driven-development, systematic-debugging, verification-before-completion, iterative-retrieval, strategic-compact |
+| フロントエンド | next-best-practices, vercel-react-best-practices, vercel-composition-patterns, tailwind-best-practices, web-design-guidelines, ui-ux-pro-max-skill |
+| API/セキュリティ | nextjs-api-patterns, security-patterns |
+| データ | prisma-expert, database-migrations |
+| テスト | vitest-testing-patterns, webapp-testing |
+| インフラ | terraform-gcp-expert |
+| 設計 | architecture-patterns |
+
+---
+
+## Hook 自動ガードレール
+
+フック定義は `~/.claude/hooks/` を参照。
+
+| Hook | Action |
+|---|---|
+| block-unnecessary-files | ルートへの .md/.txt 作成ブロック（docs/, openspec/ は許可） |
+| detect-console-log | .ts/.tsx 内の console.log を警告 |
+| require-tmux-for-servers | 長時間プロセスの tmux 強制 |
+| gate-git-push | force push ブロック、push 時チェックリスト |
 
 ---
 
 ## Compound Learning
 
-学びを記録し、種別に応じて適切なアーティファクトへの更新を自動ルーティングする。詳細は `/compound` コマンド定義を参照。
+学びを種別に応じて適切なアーティファクトに自動ルーティング。詳細は `/compound` コマンド定義を参照。
 
 ---

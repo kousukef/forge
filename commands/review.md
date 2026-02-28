@@ -6,6 +6,9 @@ argument-hint: "<change-name>"
 
 # /review コマンド
 
+REQUIRED SKILLS:
+- forge-skill-orchestrator
+
 ## 目的
 
 実装済みコードを仕様準拠の観点を含めて多角的にレビューする。
@@ -23,6 +26,22 @@ $ARGUMENTS から change-name を決定する:
 
 ## ワークフロー
 
+### Step 0: L1/L2 自動チェック
+
+LLM レビュアー起動前に、機械的に検出可能な問題を先行チェックする。
+
+1. **L1: TypeScript 型チェック**
+   - `npx tsc --noEmit` を実行
+   - 結果（エラー一覧またはエラーなし）を記録
+
+2. **L2: ESLint 静的解析**
+   - `npx eslint --quiet` を実行（変更ファイルに対して）
+   - 結果（エラー一覧またはエラーなし）を記録
+
+3. **結果の記録**
+   - L1/L2 の結果を Step 1 の REVIEW CONTEXT に注入するために保持する
+   - L1/L2 でエラーが検出されてもレビューフローは続行する（エラー修正は `/implement` の責務）
+
 ### Step 1: 仕様コンテキストの準備
 
 1. `openspec/changes/<change-name>/specs/` 配下のデルタスペックファイル一覧を取得
@@ -36,17 +55,39 @@ REVIEW CONTEXT:
 - delta-spec: openspec/changes/<change-name>/specs/[ファイル一覧]
 - design.md: openspec/changes/<change-name>/design.md
 - 変更ファイル: [git diff --stat の出力]
+- リスクレベル: [Step 2a で判定した HIGH / MEDIUM / LOW]
+- L1 (tsc --noEmit) 結果: [Step 0 の L1 結果]
+- L2 (eslint --quiet) 結果: [Step 0 の L2 結果]
 
 REVIEW INSTRUCTION:
 1. まず delta-spec と design.md を Read し、設計意図を理解すること
 2. 設計上の意図的な選択を「問題」として指摘しないこと
 3. 各指摘に「関連する仕様項目」を明記すること（仕様外の指摘は明示すること）
 4. 各指摘に確信度（HIGH / MEDIUM / LOW）を付与すること
+5. L1/L2 で既に検出された問題（型エラー、lint エラー）と同一の指摘は行わないこと。LLM レビュアーは L1/L2 では検出できない高次の問題（設計、セキュリティ、パフォーマンス等）に集中すること
 ```
 
 ### Step 2: 動的レビュアー選択
 
-`git diff --stat` の出力からドメインを検出し、起動するレビュアーを動的に決定する:
+#### Step 2a: リスクレベル判定
+
+`git diff --stat` の出力からリスクレベルを判定する。複数レベルの条件が混在する場合は最も高いレベルを採用する。
+
+| リスクレベル | 判定条件 |
+|---|---|
+| **HIGH** | 以下のいずれかに該当: `middleware.ts` の変更、`prisma/schema.prisma` の変更、`src/app/api/` 配下の新規ファイル追加、`terraform/` 配下の変更、`.env` ファイルの変更 |
+| **LOW** | 変更ファイルが `.css`, `.md`, `.test.ts` のみ |
+| **MEDIUM** | HIGH にも LOW にも該当しない |
+
+リスクレベルは REVIEW CONTEXT に含める（Step 1 の REVIEW CONTEXT テンプレートの `リスクレベル` フィールドに設定）。
+
+#### Step 2b: リスクレベル別レビュアー構成
+
+リスクレベルに応じてレビュアー構成を決定する:
+
+**HIGH の場合**: 全レビュアー + **spec-compliance-reviewer** を起動する。
+
+**MEDIUM の場合**: 以下のドメイン検出ルールに従い、動的に決定する:
 
 | ドメイン検出条件 | 起動するレビュアー |
 |---|---|
@@ -57,13 +98,46 @@ REVIEW INSTRUCTION:
 | `.prisma` ファイルまたは `prisma/` 配下のファイルが含まれる | **prisma-guardian** |
 | `.tf` ファイルまたは `terraform/` 配下のファイルが含まれる | **terraform-reviewer** |
 
-**注意**: security-sentinel は常時起動。その他は条件に該当する場合のみ起動する。
-該当しないレビュアーは起動しない（トークン節約とノイズ低減）。
+**LOW の場合**: **security-sentinel** + **type-safety-reviewer** のみを起動する。
+
+**注意**: security-sentinel は全リスクレベルで常時起動。HIGH 以外では、該当しないレビュアーは起動しない（トークン節約とノイズ低減）。
+
+### Step 2c: レビュアー別ドメイン Skill 注入
+
+Step 2b で選択された各レビュアーのプロンプトに、`REQUIRED SKILLS` としてドメイン Skill を動的に注入する。
+
+#### レビュアー → Skill マッピング
+
+| レビュアー | 注入する Skill |
+|---|---|
+| security-sentinel | security-patterns |
+| architecture-strategist | architecture-patterns |
+| api-contract-reviewer | security-patterns |
+| prisma-guardian | prisma-expert, database-migrations |
+| terraform-reviewer | terraform-gcp-expert |
+| performance-oracle | (下記の追加ルール参照) |
+| type-safety-reviewer | (なし) |
+| spec-compliance-reviewer | (なし) |
+
+#### performance-oracle の追加 Skill ルール
+
+performance-oracle は複数ドメインにまたがるため、Step 2b の検出条件に基づき追加する:
+
+- `src/app/` 配下の `.tsx` が含まれる → `vercel-react-best-practices`
+- `.prisma` / `prisma/` 配下が含まれる → `prisma-expert`
+
+#### プロンプトへの注入形式
+
+```
+REQUIRED SKILLS:
+- iterative-retrieval
+- [マッピングで決定したドメイン Skill]
+```
 
 ### Step 3: レビュアー並列実行
 
 Step 2 で選択されたレビュアーを**並列で** Task として起動する。
-各レビュアーには Step 1 で準備した REVIEW CONTEXT を注入する。
+各レビュアーには Step 1 で準備した REVIEW CONTEXT と Step 2c で決定した REQUIRED SKILLS を注入する。
 
 **レビュアーの役割（参考）:**
 

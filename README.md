@@ -67,14 +67,14 @@ rsync -av --exclude='README.md' --exclude='.git' --exclude='forge-system-prompt.
 
 ```
 ~/.claude/
-├── commands/           # スラッシュコマンド（9 個）
+├── commands/           # スラッシュコマンド（10 個）
 ├── agents/
 │   ├── research/       # リサーチエージェント（4 個）
-│   ├── spec/           # スペックエージェント（1 個）
+│   ├── spec/           # スペックエージェント（2 個）
 │   ├── orchestration/  # オーケストレーションエージェント（1 個）
 │   ├── implementation/ # 実装エージェント（3 個）
 │   └── review/         # レビューエージェント（7 個）
-├── skills/             # スキル定義（6 個）
+├── skills/             # スキル定義（方法論 7 個 + ドメイン 9 個）
 ├── rules/
 │   └── core-essentials.md  # 常時読み込みルール
 ├── reference/          # オンデマンド参照ルール（10 個）
@@ -118,6 +118,7 @@ rm -rf ~/.claude/commands ~/.claude/agents ~/.claude/skills \
 # ユーティリティコマンド
 /commit        # Conventional Commits でコミット
 /handle-pr-review <PR番号>  # PR レビューコメントに対応
+/skill-format <skill-name>  # ドメイン Skill の Phase-Aware 分割
 ```
 
 ---
@@ -131,7 +132,8 @@ rm -rf ~/.claude/commands ~/.claude/agents ~/.claude/skills \
 - **一度に 1 つだけ**質問（選択肢形式を優先）
 - **YAGNI 原則**を徹底 -- 「それは本当に今必要か？」
 - コードの話は一切しない。設計だけに集中
-- 出力: `openspec/changes/<change-name>/proposal.md`
+- **技術的制約チェック**（Step 5.5）: ドメイン Skill の `constraints.md` を参照し、要件と技術的制約の矛盾を早期検出（ブロッキングではない）
+- 出力: `openspec/changes/<change-name>/proposal.md`（「技術的考慮事項」セクション付き）
 
 ### `/spec` -- デルタスペック・技術設計・タスクリストの作成
 
@@ -154,13 +156,20 @@ rm -rf ~/.claude/commands ~/.claude/agents ~/.claude/skills \
  docs   researcher analyzer  learnings
     │      │      │              │
     └──────┴──────┴──────────────┘
+           │ Phase 1.7: ドメイン判定
+           │  proposal.md のキーワードから
+           │  ドメイン Skill を自動推論・注入
+           │
            │ Phase 2: 仕様統合（spec-writer）
            ▼
    openspec/changes/<change-name>/
    ├── specs/<feature>/delta-spec.md
    ├── design.md
    └── tasks.md
-           │ Phase 3: 承認待ち
+           │ Phase 3: 仕様検証（spec-validator）
+           │  STRIDE + Google 4観点 + LRM
+           │
+           │ Phase 4: 承認待ち
            ▼
    ユーザーが承認 → 実装へ
 ```
@@ -201,17 +210,27 @@ Main Agent（チームリーダー / オーケストレーション専任）
 
 ### `/review` -- 7 専門レビュアーによる並列レビュー
 
-7 つの専門レビューエージェントが**同時に**コードを検査します。
+7 つの専門レビューエージェントが**同時に**コードを検査します。各レビュアーはドメイン Skill を参照し、SSOT ルール（Skill 定義を優先）で一貫性を保ちます。
 
-| レビュアー | 検査対象 |
-|-----------|---------|
-| security-sentinel | OWASP Top 10、シークレット、認証・認可 |
-| performance-oracle | N+1 クエリ、バンドルサイズ、再レンダリング |
-| architecture-strategist | コンポーネント設計、責務分離、App Router 規約 |
-| prisma-guardian | マイグレーション安全性、クエリ最適化、インデックス |
-| terraform-reviewer | IaC ベストプラクティス、GCP 設定、セキュリティ |
-| type-safety-reviewer | strict モード、any 排除、Zod バリデーション |
-| api-contract-reviewer | API 入出力型、エラーレスポンス統一 |
+**Step 0: L1/L2 自動チェック**: LLM レビュアー起動前に `npx tsc --noEmit`（L1）と `npx eslint --quiet`（L2）を実行。結果を REVIEW CONTEXT に注入し、重複指摘を防止します。
+
+**リスクベース深度調整**: 変更ファイルからリスクレベルを自動判定し、レビュアー構成を最適化します。
+
+| リスクレベル | 対象 | レビュアー構成 |
+|-------------|------|---------------|
+| HIGH | middleware.ts, schema.prisma, 新規 API, terraform/, .env | 全レビュアー + spec-compliance-reviewer |
+| MEDIUM | 上記以外の一般的な変更 | ドメイン検出ルールに基づく動的選択 |
+| LOW | .css / .md / .test.ts のみ | security-sentinel + type-safety-reviewer |
+
+| レビュアー | 検査対象 | ドメイン Skill |
+|-----------|---------|--------------|
+| security-sentinel | OWASP Top 10、シークレット、認証・認可 | security-patterns |
+| performance-oracle | N+1 クエリ、バンドルサイズ、再レンダリング | next-best-practices, prisma-expert |
+| architecture-strategist | コンポーネント設計、責務分離、App Router 規約 | architecture-patterns, next-best-practices |
+| prisma-guardian | マイグレーション安全性、クエリ最適化、インデックス | prisma-expert, database-migrations |
+| terraform-reviewer | IaC ベストプラクティス、GCP 設定、セキュリティ | terraform-gcp-expert |
+| type-safety-reviewer | strict モード、any 排除、Zod バリデーション | -- （横断的関心事） |
+| api-contract-reviewer | API 入出力型、エラーレスポンス統一 | nextjs-api-patterns, security-patterns |
 
 発見事項は P1（修正必須）/ P2（修正推奨）/ P3（軽微）に分類されます。
 
@@ -234,6 +253,10 @@ Main Agent（チームリーダー / オーケストレーション専任）
 
 - うまくいったパターン / 失敗と修正 / 予想外の落とし穴
 - **100 ドルルール**: 防げたはずの失敗が起きたら、ルール・スキル・フックの更新を提案
+- **Three Strikes Rule**: 同一種別の問題が3回蓄積したら、必ずプロセス改善を提案
+- **Shift-Left 分類**: 問題を「設計で防げた / 実装で防げた / テストで防げた」に分類し、前段フェーズへの防止策を提案
+- **レビューメトリクス蓄積**（Step 3.5）: P1/P2/P3/ノイズ候補、却下率、カバレッジ率を `docs/compound/metrics/review-metrics.md` に蓄積
+- **Skill 派生ファイル同期**（Step 4.5）: SKILL.md 更新時に design.md / constraints.md の同期を自動実行
 - **スペックマージ**: `openspec/changes/<change-name>/specs/` → `openspec/specs/` にマージ
 - **変更アーカイブ**: `openspec/changes/<change-name>/` → `openspec/changes/archive/` に移動
 
@@ -251,6 +274,19 @@ PR のレビューコメントを分析し、必要な修正・コミット・�
 ```
 /handle-pr-review <PR番号>
 ```
+
+### `/skill-format` -- ドメイン Skill の Phase-Aware 分割
+
+ドメイン Skill を Phase-Aware File Structure（SKILL.md / design.md / constraints.md）に分割します。
+
+```
+/skill-format <skill-name>           # 指定 Skill を分割
+/skill-format --all                  # 全ドメイン Skill を一括分割
+/skill-format --check                # 分割状況を一覧表示
+/skill-format --sync <skill-name>    # 派生ファイルを SKILL.md と同期
+```
+
+`skill-phase-formatter` Skill の分割基準に従い、constraints.md（制約のみ、~30行）と design.md（設計指針、~120行）を生成・検証します。
 
 ### `/ship` -- 完全自律モード
 
@@ -286,11 +322,12 @@ PR のレビューコメントを分析し、必要な修正・コミット・�
 
 ### スペックエージェント（`agents/spec/`）
 
-`/spec` の Phase 2 でリサーチ結果を統合し、仕様書を生成します。
+`/spec` の Phase 2 でリサーチ結果を統合し、仕様書を生成・検証します。
 
 | エージェント | 役割 | モデル |
 |-------------|------|--------|
 | spec-writer | リサーチ結果を統合し design.md / tasks.md / delta-spec を生成 | sonnet |
+| spec-validator | STRIDE + Google 4観点 + Last Responsible Moment で仕様を検証 | opus |
 
 Teams モードでは、リサーチャーに追加調査を依頼したり、矛盾を検出してエスカレーションを行います。
 
@@ -350,23 +387,58 @@ Main Agent（オーケストレーション層 / チームリーダー）
 
 ## スキル
 
-エージェントの行動規範を定義する方法論です。**1% ルール**: 1% でも適用される可能性があれば、そのスキルを呼び出します。
+エージェントの行動規範を定義する方法論とドメイン知識です。**1% ルール**: 1% でも適用される可能性があれば、そのスキルを呼び出します。
+
+### 方法論スキル
 
 | スキル | 概要 |
 |--------|------|
-| forge-skill-orchestrator | 作業開始時のスキル判定・ルーティング（1% ルール適用） |
+| forge-skill-orchestrator | 作業開始時のスキル判定・ルーティング（Phase-Aware サフィックス判定） |
+| skill-phase-formatter | ドメイン Skill の Phase-Aware 分割基準・手順・検証項目を定義 |
 | test-driven-development | TDD の絶対ルール。テスト前のコードは削除してやり直し |
 | systematic-debugging | 再現→原因特定→修正→防御の 4 フェーズデバッグ |
 | verification-before-completion | テスト実行結果を貼り付けて完了を証明 |
 | iterative-retrieval | Glob → Grep → Read で段階的にコンテキスト取得 |
 | strategic-compact | コンテキストウィンドウ 80% 超過時の手動コンパクション |
 
+### ドメインスキル（Phase-Aware File Structure）
+
+9 個のドメインスキルは、フェーズに応じて異なる粒度の知識を提供する 3 ファイル構成です。
+
+```
+skills/<skill-name>/
+├── SKILL.md           # マスター（SSOT）。実装用フル知識 ~500行
+├── design.md          # 設計向け。/spec で使用 ~80-120行
+└── constraints.md     # 制約のみ。/brainstorm で使用 ~20-30行
+```
+
+| フェーズ | 読み込みファイル | コンテキスト効率 |
+|---------|----------------|-----------------|
+| `/brainstorm` | constraints.md | ~20-30行/Skill |
+| `/spec` | design.md | ~80-120行/Skill |
+| `/implement`, `/review` | SKILL.md（フル） | ~500行/Skill |
+
+| スキル | 領域 |
+|--------|------|
+| prisma-expert | Prisma スキーマ設計、クエリ最適化、N+1 防止 |
+| database-migrations | ゼロダウンタイムマイグレーション、Expand-Contract パターン |
+| next-best-practices | Next.js App Router、Server/Client Components |
+| nextjs-api-patterns | Route Handlers、Server Actions、Zod バリデーション |
+| security-patterns | OWASP Top 10、XSS/CSRF/SQLi 防止、認証・認可 |
+| architecture-patterns | SOLID、DDD、レイヤードアーキテクチャ、ADR |
+| terraform-gcp-expert | GCP リソース設計、モジュール構成、IAM |
+| vercel-react-best-practices | React パフォーマンス、hooks 設計、状態管理 |
+| vercel-composition-patterns | Compound Components、Container/Presentational |
+
 ### スキル注入メカニズム
 
-Sub Agent にはスキル**名**のみを渡します。Claude Code がスキル名からパスを自動解決し、読み込みます。
+`forge-skill-orchestrator` がフェーズを検出し、ドメインスキルの読み込み方式を決定します。
 
+- **Skill ツール呼び出し**（`/implement`, `/review` 等）: スキル名のみを渡し、Claude Code が SKILL.md を自動解決
+- **Read ツール読み込み**（`/brainstorm`, `/spec`）: Phase-Aware ファイル（`constraints.md` / `design.md`）のパスを直接指定
 - プロジェクト固有: `<project>/.claude/skills/`（優先度 1）
 - グローバル: `~/.claude/skills/`（優先度 2）
+- フォールバック: Phase-Aware ファイルが存在しない場合は Skill ツールで SKILL.md を使用
 
 ---
 
@@ -470,7 +542,8 @@ forge/
 │   ├── compound.md
 │   ├── ship.md
 │   ├── commit.md
-│   └── handle-pr-review.md
+│   ├── handle-pr-review.md
+│   └── skill-format.md
 │
 ├── agents/                          # → ~/.claude/agents/
 │   ├── research/
@@ -479,7 +552,8 @@ forge/
 │   │   ├── web-researcher.md
 │   │   └── compound-learnings-researcher.md
 │   ├── spec/
-│   │   └── spec-writer.md
+│   │   ├── spec-writer.md
+│   │   └── spec-validator.md
 │   ├── orchestration/
 │   │   └── implement-orchestrator.md
 │   ├── implementation/
@@ -497,11 +571,21 @@ forge/
 │
 ├── skills/                          # → ~/.claude/skills/
 │   ├── forge-skill-orchestrator/SKILL.md
+│   ├── skill-phase-formatter/SKILL.md
 │   ├── test-driven-development/SKILL.md
 │   ├── systematic-debugging/SKILL.md
 │   ├── verification-before-completion/SKILL.md
 │   ├── iterative-retrieval/SKILL.md
-│   └── strategic-compact/SKILL.md
+│   ├── strategic-compact/SKILL.md
+│   ├── prisma-expert/{SKILL.md, design.md, constraints.md}
+│   ├── database-migrations/{SKILL.md, design.md, constraints.md}
+│   ├── next-best-practices/{SKILL.md, design.md, constraints.md}
+│   ├── nextjs-api-patterns/{SKILL.md, design.md, constraints.md}
+│   ├── security-patterns/{SKILL.md, design.md, constraints.md}
+│   ├── architecture-patterns/{SKILL.md, design.md, constraints.md}
+│   ├── terraform-gcp-expert/{SKILL.md, design.md, constraints.md}
+│   ├── vercel-react-best-practices/{SKILL.md, design.md, constraints.md}
+│   └── vercel-composition-patterns/{SKILL.md, design.md, constraints.md}
 │
 ├── rules/                           # → ~/.claude/rules/
 │   └── core-essentials.md           # 常時読み込み

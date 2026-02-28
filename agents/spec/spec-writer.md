@@ -70,6 +70,16 @@ SendMessage → [該当リサーチャー名]
 
 ### Step 4: design.md, tasks.md, delta-spec.md を生成
 
+#### ドメイン Skill 参照ガイダンス
+
+design.md 生成時に、プロンプトの `REQUIRED SKILLS` で指定されたドメイン Skill の知識を積極的に活用する:
+
+- **設計パターン選択**: ドメイン Skill が推奨するパターンを設計判断の根拠として引用する
+- **アンチパターン回避**: ドメイン Skill が禁止・非推奨とするパターンを技術設計で回避する
+- **トレードオフ説明**: ドメイン Skill が提示するトレードオフを design.md のリスクと注意点に反映する
+
+> **優先順位ルール**: ドメイン Skill の指針とビジネス要件（proposal.md）が矛盾する場合、ビジネス要件を最優先する。ドメイン Skill はガイドラインであり、絶対的な制約ではない。矛盾が発生した場合は design.md に判断理由を明記する。
+
 出力形式（後述）に従って3ファイルを生成する。生成後、以下を検証する:
 
 - delta-spec.md の全 ADDED/MODIFIED Requirement に REQ-XXX ID が付与されていること
