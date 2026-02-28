@@ -86,17 +86,16 @@ COMPLETION CRITERIA:
 - Spec Interpretation Log の Phase B（実装後の検証結果）が追記済みであること
 ```
 
-#### スキル名決定テーブル
+#### ガイダンステーブル（推奨マッピング）
 
-| ドメイン判定 | 適用スキル名 |
-|---|---|
-| `.ts` / `.tsx` 全般 | `test-driven-development`, `verification-before-completion`, `iterative-retrieval` |
-| Next.js（`src/app/`） | 上記 + `next-best-practices` |
-| Prisma（`prisma/`, `server/`） | 上記 + `prisma-expert` |
-| デバッグ / エラー修正 | `systematic-debugging`, `iterative-retrieval` |
-| フロントエンド UI | 上記 + `frontend-design` |
+Domain Skills は Auto-Discovery により自動起動されるが、サブエージェント委譲時は CLAUDE.md の「ガイダンステーブル（推奨マッピング）」を参照してスキル名を明示指定する。
 
-> スキルはパスではなく名前で指定する。Claude Code がグローバル（`~/.claude/skills/`）とプロジェクト（`<project>/.claude/skills/`）の両方から自動解決する。
+基本方針:
+- `.ts`/`.tsx` 全般 → `test-driven-development`, `verification-before-completion`, `iterative-retrieval`
+- 対象ファイルパスからドメインを判定し、CLAUDE.md のテーブルから該当スキルを追加
+- テーブルに記載のないスキルも Auto-Discovery で起動可能
+
+> スキルはパスではなく名前で指定する。Claude Code がグローバルとプロジェクトの両方から自動解決する。
 
 #### 並列バッチ実行
 

@@ -52,18 +52,18 @@ openspec/
 
 詳細ルールは `reference/` にオンデマンド配置。作業対象に応じて必要なファイルを読み込む:
 
-| Reference File | 読み込むタイミング |
-|---|---|
-| `reference/typescript-rules.md` | TypeScript実装・型設計時 |
-| `reference/coding-standards.md` | コーディング規約の確認時 |
-| `reference/core-rules.md` | フェーズ管理・検証ゲート確認時 |
-| `reference/workflow-rules.md` | セッション管理・チェックポイント時 |
-| `reference/common/coding-style.md` | ファイルサイズ・命名規約確認時 |
-| `reference/common/testing.md` | テスト作成・TDD実践時 |
-| `reference/common/performance.md` | パフォーマンス最適化時 |
-| `reference/nextjs/conventions.md` | Next.js App Router作業時 |
-| `reference/prisma/conventions.md` | Prismaスキーマ・クエリ作業時 |
-| `reference/terraform/conventions.md` | Terraform IaC作業時 |
+| Reference File                       | 読み込むタイミング                 |
+| ------------------------------------ | ---------------------------------- |
+| `reference/typescript-rules.md`      | TypeScript実装・型設計時           |
+| `reference/coding-standards.md`      | コーディング規約の確認時           |
+| `reference/core-rules.md`            | フェーズ管理・検証ゲート確認時     |
+| `reference/workflow-rules.md`        | セッション管理・チェックポイント時 |
+| `reference/common/coding-style.md`   | ファイルサイズ・命名規約確認時     |
+| `reference/common/testing.md`        | テスト作成・TDD実践時              |
+| `reference/common/performance.md`    | パフォーマンス最適化時             |
+| `reference/nextjs/conventions.md`    | Next.js App Router作業時           |
+| `reference/prisma/conventions.md`    | Prismaスキーマ・クエリ作業時       |
+| `reference/terraform/conventions.md` | Terraform IaC作業時                |
 
 ---
 
