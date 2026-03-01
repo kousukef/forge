@@ -1,59 +1,101 @@
-# Forge
+<h1 align="center">Forge</h1>
 
-**コードを鍛え上げる場所** -- Claude Code プラグイン統合開発ワークフローシステム
+<p align="center">
+  <strong>設計から実装・レビュー・テストまで — Claude Code の開発ワークフローを自動化するプラグインシステム</strong>
+</p>
 
-Forge は、設計から実装・レビュー・テスト・学習までの開発ライフサイクル全体を、Claude Code のスラッシュコマンド・エージェント・スキル・フックで自動化する統合システムです。
-
----
-
-## 対象技術スタック
-
-| レイヤー | 技術 |
-|---------|------|
-| フロントエンド & バックエンド | Next.js（App Router） |
-| ORM | Prisma |
-| IaC | Terraform |
-| クラウド | Google Cloud Platform（GCP） |
-| 言語 | TypeScript |
-| テスト | Vitest + Playwright |
-| パッケージマネージャ | npm |
+<p align="center">
+  <a href="#クイックスタート">クイックスタート</a> •
+  <a href="#コマンド一覧">コマンド</a> •
+  <a href="#仕組み">仕組み</a> •
+  <a href="#カスタマイズ">カスタマイズ</a>
+</p>
 
 ---
 
-## インストール
+## Forge とは
+
+Forge は [Claude Code](https://docs.anthropic.com/en/docs/claude-code) のプラグインシステムです。スラッシュコマンド・エージェント・スキル・フックを組み合わせて、**要件定義から実装・レビュー・テストまでの開発ライフサイクル全体**を自動化します。
+
+```
+/brainstorm → /spec → /implement → /review → /test → /compound
+```
+
+**主な特徴:**
+
+- **ワンコマンド自動化** — `/ship` で設計から実装・レビュー・テストまで一気通貫
+- **マルチエージェント並列処理** — 4つのリサーチャー、7つのレビュアーが同時に動く
+- **TDD 駆動** — テストファーストで実装し、仕様準拠を自動検証
+- **コンテキスト保護** — Main Agent はオーケストレーションに専念し、実装は Sub Agent に委譲
+- **複利ドキュメント** — 開発から得た学びを蓄積し、次の開発にフィードバック
+
+---
+
+## クイックスタート
 
 ### 前提条件
 
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) がインストール済み
 - 以下の MCP サーバーが設定済み：
-  - **Context7 MCP** -- フレームワーク公式ドキュメント取得用
-  - **Web Search MCP**（Brave Search MCP または Tavily MCP）-- Web 検索用
+  - **Context7 MCP** — フレームワーク公式ドキュメント取得用
+  - **Web Search MCP**（[Brave Search MCP](https://github.com/anthropics/brave-search-mcp) または [Tavily MCP](https://github.com/tavily-ai/tavily-mcp)）— Web 検索用
 
-### セットアップ
-
-インストーラースクリプトでシンボリックリンクを作成します。`git pull` で更新が自動反映されます。
+### 3 ステップで導入
 
 ```bash
-# リポジトリをクローン
-git clone https://github.com/your-username/forge.git
+# 1. クローン
+git clone https://github.com/kousukef/forge.git
 cd forge
 
-# シンボリックリンク方式でインストール
+# 2. インストール（シンボリックリンク方式）
 bash install.sh
+
+# 3. 任意のプロジェクトで Claude Code を起動して使う
+cd ~/my-project
+claude
+> /ship ユーザー認証機能を追加したい
 ```
 
-`-y` フラグで確認プロンプトをスキップできます（CI / 非対話環境向け）:
-
-```bash
-bash install.sh -y
-```
-
-> **注意**: 既に `~/.claude/settings.json` が存在する場合は上書きしません。設定を更新する場合は `settings.template.json` をテンプレートとして参照してください。
+`install.sh` は `~/.claude/` 配下にシンボリックリンクを作成します。`git pull` で更新が自動反映されます。
 
 <details>
-<summary>手動インストール（コピー方式）</summary>
+<summary><b>インストールの詳細</b></summary>
 
-シンボリックリンクを使わずにファイルをコピーする場合:
+#### オプション
+
+```bash
+bash install.sh -y   # 確認プロンプトをスキップ（CI向け）
+```
+
+#### 何が行われるか
+
+`~/.claude/` 配下の各ディレクトリに、Forge の個別ファイルへのシンボリックリンクを作成します。ユーザー独自のコマンドやスキルとの共存が可能です。
+
+```
+~/.claude/
+├── commands/
+│   ├── brainstorm.md → forge/commands/brainstorm.md   # Forge のコマンド
+│   ├── spec.md → forge/commands/spec.md
+│   └── my-command.md                                   # ユーザー独自（共存可能）
+├── agents/     → forge/agents/ の各ファイルへリンク
+├── skills/     → forge/skills/ の各ディレクトリへリンク
+├── rules/      → forge/rules/ の各ファイルへリンク
+├── reference/  → forge/reference/ の各ファイルへリンク
+├── hooks/      → forge/hooks/ の各ファイルへリンク
+├── docs/       → forge/docs/ の各ディレクトリへリンク
+└── settings.json  （初回のみコピー。既存ファイルは上書きしない）
+```
+
+#### インストール確認
+
+```bash
+ls -la ~/.claude/skills/
+# 各スキルが forge/ へのシンボリックリンクになっていれば OK
+```
+
+#### 手動インストール（コピー方式）
+
+シンボリックリンクを使わない場合は手動でコピーできます（`git pull` による自動更新は不可）：
 
 ```bash
 mkdir -p ~/.claude
@@ -67,288 +109,92 @@ cp -r docs/ ~/.claude/docs/
 cp settings.json ~/.claude/settings.json
 ```
 
-> コピー方式では `git pull` による更新が反映されません。更新時は再度コピーしてください。
-
-</details>
-
-### インストールの確認
-
-セットアップ後、各ディレクトリ内の要素がシンボリックリンクになっていれば正しくインストールされています:
-
-```bash
-ls -la ~/.claude/skills/
-```
-
-期待される出力（パスはクローン先によって異なります）:
-
-```
-drwxr-xr-x  .
-drwxr-xr-x  ..
-lrwxr-xr-x  forge-skill-orchestrator -> /path/to/forge/skills/forge-skill-orchestrator
-lrwxr-xr-x  test-driven-development  -> /path/to/forge/skills/test-driven-development
-lrwxr-xr-x  ...
-my-custom-skill/                       # ユーザー独自のスキル（共存可能）
-```
-
-ディレクトリ構造:
-
-```
-~/.claude/
-├── commands/                          # ディレクトリはユーザー所有
-│   ├── brainstorm.md -> forge/...     #   中の各ファイルが Forge へのリンク
-│   ├── commit.md -> forge/...
-│   └── my-command.md                  #   ユーザー独自コマンド（共存可能）
-├── agents/                            # エージェント定義
-│   ├── research/ -> forge/...         #   カテゴリ単位でリンク
-│   ├── spec/ -> forge/...
-│   ├── orchestration/ -> forge/...
-│   ├── implementation/ -> forge/...
-│   └── review/ -> forge/...
-├── skills/                            # スキル定義（方法論 + ドメイン）
-│   ├── forge-skill-orchestrator/ -> forge/...
-│   ├── test-driven-development/ -> forge/...
-│   └── my-custom-skill/               #   ユーザー独自スキル（共存可能）
-├── rules/                             # 常時読み込みルール
-│   └── core-essentials.md -> forge/...
-├── reference/                         # オンデマンド参照ルール
-│   ├── common/ -> forge/...
-│   ├── typescript-rules.md -> forge/...
-│   └── ...
-├── hooks/                             # 自動品質ゲート
-│   ├── gate-git-push.js -> forge/...
-│   ├── package.json -> forge/...
-│   └── ...
-├── docs/                              # 複利ドキュメント
-│   ├── compound/ -> forge/...
-│   └── ...
-└── settings.json                      # フック・パーミッション設定（コピー）
-```
-
-### アンインストール
-
-アンインストーラースクリプトでシンボリックリンクを削除します:
+#### アンインストール
 
 ```bash
 bash uninstall.sh
 ```
 
-Forge が作成したシンボリックリンクのみ削除し、ユーザー独自の資産や Claude Code のランタイムファイル（`projects/`, `teams/`, `tasks/`）には触れません。`settings.json` も自動削除しません。
+Forge が作成したシンボリックリンクのみ削除します。ユーザー独自の資産や Claude Code のランタイムファイルには触れません。
 
----
-
-## 使い方
-
-任意のプロジェクトディレクトリで Claude Code を起動し、スラッシュコマンドを実行します：
-
-```bash
-# 新機能を設計から実装まで一気通貫で
-/ship
-
-# または、フェーズごとに段階的に
-/brainstorm    # 要件を深掘り
-/spec          # 仕様書を作成
-/implement     # TDD で実装
-/review        # コードレビュー
-/test          # テスト実行・検証
-/compound      # 学びを文書化
-
-# ユーティリティコマンド
-/commit        # Conventional Commits でコミット
-/handle-pr-review <PR番号>  # PR レビューコメントに対応
-/skill-format <skill-name>  # ドメイン Skill の Phase-Aware 分割
-```
+</details>
 
 ---
 
 ## コマンド一覧
 
-### `/brainstorm` -- 要件の深掘り
+任意のプロジェクトで Claude Code を起動し、スラッシュコマンドで実行します。
 
-ソクラテス式対話で機能の要件を深掘りします。
+### 開発ワークフロー
 
-- **一度に 1 つだけ**質問（選択肢形式を優先）
-- **YAGNI 原則**を徹底 -- 「それは本当に今必要か？」
-- コードの話は一切しない。設計だけに集中
-- **技術的制約チェック**（Step 5.5）: ドメイン Skill の `constraints.md` を参照し、要件と技術的制約の矛盾を早期検出（ブロッキングではない）
-- 出力: `openspec/changes/<change-name>/proposal.md`（「技術的考慮事項」セクション付き）
+| コマンド | 概要 | 出力 |
+|---------|------|------|
+| `/brainstorm` | ソクラテス式対話で要件を深掘り | `proposal.md` |
+| `/spec` | リサーチ → 仕様書・タスクリスト生成 → 仕様検証 | `design.md` `tasks.md` `delta-spec.md` |
+| `/implement` | TDD 駆動の実装（Sub Agent に委譲） | 実装コード + テスト |
+| `/review` | 7 専門レビュアーによる並列コードレビュー | レビューレポート |
+| `/test` | テスト・型チェック・lint・ビルド検証の一括実行 | 実行結果レポート |
+| `/compound` | 学びの文書化 + スペックマージ + アーカイブ | `docs/compound/` |
+| **`/ship`** | **上記を全て連鎖実行する完全自律パイプライン** | — |
 
-### `/spec` -- デルタスペック・技術設計・タスクリストの作成
+### ユーティリティ
 
-リサーチエージェント群と spec-writer を起動し、情報を収集してから仕様を作成します。Teams モードと Sub Agents モードを選択可能。
-
-```
-/spec <change-name>              # デフォルト（Sub Agents モード）
-/spec <change-name> --teams      # Teams モード（エージェント間通信あり）
-/spec <change-name> --agents     # Sub Agents モード（並列独立実行）
-```
-
-```
-┌─────────────────────┐
-│      /spec 実行      │
-└──────────┬──────────┘
-           │ Phase 1: リサーチ（4 エージェント並列）
-    ┌──────┼──────┬──────────────┐
-    ▼      ▼      ▼              ▼
- stack-  web-  codebase-  compound-
- docs   researcher analyzer  learnings
-    │      │      │              │
-    └──────┴──────┴──────────────┘
-           │ Phase 1.7: ドメイン判定
-           │  proposal.md のキーワードから
-           │  ドメイン Skill を自動推論・注入
-           │
-           │ Phase 2: 仕様統合（spec-writer）
-           ▼
-   openspec/changes/<change-name>/
-   ├── specs/<feature>/delta-spec.md
-   ├── design.md
-   └── tasks.md
-           │ Phase 3: 仕様検証（spec-validator）
-           │  STRIDE + Google 4観点 + LRM
-           │
-           │ Phase 4: 承認待ち
-           ▼
-   ユーザーが承認 → 実装へ
-```
-
-- Delta 記法（ADDED/MODIFIED/REMOVED）と Given/When/Then シナリオで要件を記述
-- 1 タスク = 2〜5 分で完了できるサイズ
-- 各タスクにファイルパス・検証方法を明記
-- テストタスクを実装タスクの**前**に配置（TDD）
-- 各タスクにデルタスペック要件へのリンクを含む
-
-### `/implement` -- TDD 駆動の実装
-
-仕様書のタスクリストに基づき、2 層アーキテクチャで実装します。Main Agent がオーケストレーション専任、実装は全て Sub Agent / Teams に委譲します。
-
-```
-/implement <change-name>              # デフォルト（Sub Agents モード）
-/implement <change-name> --teams      # Teams モード
-/implement <change-name> --agents     # Sub Agents モード
-```
-
-```
-Main Agent（チームリーダー / オーケストレーション専任）
-  │ tasks.md + design.md を読み込み
-  │ タスク分析・依存関係構築
-  │
-  ├─ [Teams モード] TeamCreate → 実装チーム
-  │   ├─ implementer teammates × N（TDD: RED → GREEN → REFACTOR）
-  │   ├─ spec-compliance-reviewer（逸脱検出 → implementer に直接フィードバック）
-  │   └─ build-error-resolver（ビルドエラー時に投入）
-  │
-  └─ [Sub Agents モード] Task(implementer) × N
-      ├─ 並列可能なタスクは同時に Task 起動
-      ├─ 検証失敗時: Task(build-error-resolver) で修正
-      └─ スペック準拠: Task(spec-compliance-reviewer) で確認
-```
-
-**Context Isolation Policy**: Main Agent は実装ファイルの Read / Write / Edit を行わない。全ての実装作業をエージェントに委譲することで、コンテキストウィンドウを保護します。
-
-### `/review` -- 7 専門レビュアーによる並列レビュー
-
-7 つの専門レビューエージェントが**同時に**コードを検査します。各レビュアーはドメイン Skill を参照し、SSOT ルール（Skill 定義を優先）で一貫性を保ちます。
-
-**Step 0: L1/L2 自動チェック**: LLM レビュアー起動前に `npx tsc --noEmit`（L1）と `npx eslint --quiet`（L2）を実行。結果を REVIEW CONTEXT に注入し、重複指摘を防止します。
-
-**リスクベース深度調整**: 変更ファイルからリスクレベルを自動判定し、レビュアー構成を最適化します。
-
-| リスクレベル | 対象 | レビュアー構成 |
-|-------------|------|---------------|
-| HIGH | middleware.ts, schema.prisma, 新規 API, terraform/, .env | 全レビュアー + spec-compliance-reviewer |
-| MEDIUM | 上記以外の一般的な変更 | ドメイン検出ルールに基づく動的選択 |
-| LOW | .css / .md / .test.ts のみ | security-sentinel + type-safety-reviewer |
-
-| レビュアー | 検査対象 | ドメイン Skill |
-|-----------|---------|--------------|
-| security-sentinel | OWASP Top 10、シークレット、認証・認可 | security-patterns |
-| performance-oracle | N+1 クエリ、バンドルサイズ、再レンダリング | next-best-practices, prisma-expert |
-| architecture-strategist | コンポーネント設計、責務分離、App Router 規約 | architecture-patterns, next-best-practices |
-| prisma-guardian | マイグレーション安全性、クエリ最適化、インデックス | prisma-expert, database-migrations |
-| terraform-reviewer | IaC ベストプラクティス、GCP 設定、セキュリティ | terraform-gcp-expert |
-| type-safety-reviewer | strict モード、any 排除、Zod バリデーション | -- （横断的関心事） |
-| api-contract-reviewer | API 入出力型、エラーレスポンス統一 | nextjs-api-patterns, security-patterns |
-
-発見事項は P1（修正必須）/ P2（修正推奨）/ P3（軽微）に分類されます。
-
-### `/test` -- テスト実行と完了検証
-
-以下を順番に実行し、**実際の実行結果を貼り付けて**完了を証明します。
-
-1. ユニットテスト: `npx vitest run`
-2. 型チェック: `npx tsc --noEmit`
-3. リント: `npx eslint .`
-4. ビルド検証: `npm run build`
-5. E2E テスト: `npx playwright test`
-6. カバレッジ: 80% 以上を目標
-
-失敗がある場合は根本原因を分析し、修正→再テストを繰り返します。
-
-### `/compound` -- 学びの文書化 + スペックマージ
-
-開発セッションから得た学びを `docs/compound/` に記録し、将来の開発にフィードバックします。さらに、デルタスペックを累積スペックにマージしてアーカイブします。
-
-- うまくいったパターン / 失敗と修正 / 予想外の落とし穴
-- **100 ドルルール**: 防げたはずの失敗が起きたら、ルール・スキル・フックの更新を提案
-- **Three Strikes Rule**: 同一種別の問題が3回蓄積したら、必ずプロセス改善を提案
-- **Shift-Left 分類**: 問題を「設計で防げた / 実装で防げた / テストで防げた」に分類し、前段フェーズへの防止策を提案
-- **レビューメトリクス蓄積**（Step 3.5）: P1/P2/P3/ノイズ候補、却下率、カバレッジ率を `docs/compound/metrics/review-metrics.md` に蓄積
-- **Skill 派生ファイル同期**（Step 4.5）: SKILL.md 更新時に design.md / constraints.md の同期を自動実行
-- **スペックマージ**: `openspec/changes/<change-name>/specs/` → `openspec/specs/` にマージ
-- **変更アーカイブ**: `openspec/changes/<change-name>/` → `openspec/changes/archive/` に移動
-
-### `/commit` -- Conventional Commits でコミット
-
-ステージされた変更（なければ全変更を自動ステージ）から Conventional Commits 形式のメッセージを生成してコミットします。
-
-- 事前に `npm lint` と `npm check-types` を自動実行（`--no-verify` でスキップ可能）
-- `git diff` で変更内容を分析し、適切なコミットメッセージを生成
-
-### `/handle-pr-review` -- PR レビューコメント対応
-
-PR のレビューコメントを分析し、必要な修正・コミット・プッシュ・スレッド返信を一括処理します。
-
-```
-/handle-pr-review <PR番号>
-```
-
-### `/skill-format` -- ドメイン Skill の Phase-Aware 分割
-
-ドメイン Skill を Phase-Aware File Structure（SKILL.md / design.md / constraints.md）に分割します。
-
-```
-/skill-format <skill-name>           # 指定 Skill を分割
-/skill-format --all                  # 全ドメイン Skill を一括分割
-/skill-format --check                # 分割状況を一覧表示
-/skill-format --sync <skill-name>    # 派生ファイルを SKILL.md と同期
-```
-
-`skill-phase-formatter` Skill の分割基準に従い、constraints.md（制約のみ、~30行）と design.md（設計指針、~120行）を生成・検証します。
-
-### `/ship` -- 完全自律モード
-
-全コマンドを連鎖実行する完全自律パイプラインです。
-
-```
-/brainstorm ──→ ユーザー承認
-     │           openspec/changes/<change-name>/proposal.md
-/spec ─────→ ユーザー承認
-     │           openspec/changes/<change-name>/{specs/,design.md,tasks.md}
-     ▼ 以降は自律実行
-/implement → /review → 自動修正 → /test → /compound
-                                    │        │
-                              失敗時:      スペックマージ +
-                              最大3回      アーカイブ
-                              リトライ
-```
+| コマンド | 概要 |
+|---------|------|
+| `/commit` | 変更を分析して Conventional Commits 形式でコミット |
+| `/handle-pr-review <PR番号>` | PR レビューコメントの分析・修正・返信を一括処理 |
+| `/skill-format <skill-name>` | ドメインスキルの Phase-Aware ファイル分割 |
 
 ---
 
-## エージェント構成
+## 仕組み
 
-### リサーチエージェント（`agents/research/`）
+### 全体フロー
 
-`/spec` の Phase 1 で並列起動され、情報を収集します。
+```
+  ユーザー: /ship （または個別コマンド）
+    │
+    ▼
+┌──────────────────────────────────────────────────────────────┐
+│  /brainstorm                                                 │
+│  ソクラテス式対話で要件を深掘り → proposal.md                     │
+│                                              [ユーザー承認]     │
+├──────────────────────────────────────────────────────────────┤
+│  /spec                                                       │
+│                                                              │
+│  ┌─────────────┐ ┌──────────────┐ ┌───────────┐ ┌────────┐  │
+│  │ stack-docs  │ │web-researcher│ │ codebase- │ │compound│  │
+│  │ researcher  │ │              │ │ analyzer  │ │learnings│ │
+│  └──────┬──────┘ └──────┬───────┘ └─────┬─────┘ └───┬────┘  │
+│         └───────────────┴───────────────┴────────────┘       │
+│                         ▼                                    │
+│              spec-writer → spec-validator                    │
+│              design.md / tasks.md / delta-spec.md            │
+│                                              [ユーザー承認]     │
+├──────────────────────────────────────────────────────────────┤
+│  /implement                              ┌──── 以降は自律実行  │
+│  Main Agent（オーケストレーション専任）          │                │
+│    └─ implementer × N（TDD: RED→GREEN→REFACTOR）             │
+├──────────────────────────────────────────────────────────────┤
+│  /review                                                     │
+│  複数の専門レビュアーが並列でコードを検査                           │
+├──────────────────────────────────────────────────────────────┤
+│  /test                                                       │
+│  テスト → 型チェック → lint → ビルド検証                          │
+│  （失敗時は最大3回リトライ）                                      │
+├──────────────────────────────────────────────────────────────┤
+│  /compound                                                   │
+│  学びを記録 + スペックマージ + アーカイブ                          │
+└──────────────────────────────────────────────────────────────┘
+```
+
+> `/brainstorm` と `/spec` の後にユーザー承認が必要です。`/implement` 以降は自律的に実行されます。
+
+### マルチエージェント構成
+
+Forge は 4 種類のエージェントグループで構成されています。
+
+#### リサーチエージェント（`/spec` Phase 1 で並列起動）
 
 | エージェント | 役割 | 情報源 |
 |-------------|------|--------|
@@ -357,222 +203,148 @@ PR のレビューコメントを分析し、必要な修正・コミット・�
 | codebase-analyzer | 既存コードのパターン・影響範囲分析 | プロジェクトファイル |
 | compound-learnings-researcher | 過去の学びから関連教訓を抽出 | `docs/compound/` |
 
-### スペックエージェント（`agents/spec/`）
+#### スペックエージェント（`/spec` Phase 2-3）
 
-`/spec` の Phase 2 でリサーチ結果を統合し、仕様書を生成・検証します。
+| エージェント | 役割 |
+|-------------|------|
+| spec-writer | リサーチ結果を統合し design.md / tasks.md / delta-spec を生成 |
+| spec-validator | STRIDE + Google 4 観点で仕様を敵対的に検証 |
 
-| エージェント | 役割 | モデル |
-|-------------|------|--------|
-| spec-writer | リサーチ結果を統合し design.md / tasks.md / delta-spec を生成 | sonnet |
-| spec-validator | STRIDE + Google 4観点 + Last Responsible Moment で仕様を検証 | opus |
+#### 実装エージェント（`/implement` で起動）
 
-Teams モードでは、リサーチャーに追加調査を依頼したり、矛盾を検出してエスカレーションを行います。
+| エージェント | 役割 |
+|-------------|------|
+| implementer | TDD 駆動の実装（RED → GREEN → REFACTOR） |
+| spec-compliance-reviewer | 仕様書との照合・逸脱検出 |
+| build-error-resolver | ビルドエラーの最小差分修正 |
 
-### オーケストレーションエージェント（`agents/orchestration/`）
+#### レビューエージェント（`/review` で並列起動）
 
-`claude --agent implement-orchestrator` でメインスレッドとして起動する場合にのみ使用します。`/implement` コマンドからは使用しません。
+セキュリティ・パフォーマンス・アーキテクチャ・型安全性・API 契約など、複数の専門観点からコードを並列に検査します。同梱のレビュアーは `agents/review/` で定義されており、プロジェクトに合わせて追加・削除できます。
 
-| エージェント | 役割 | モデル |
-|-------------|------|--------|
-| implement-orchestrator | 実装オーケストレーション専任（Write/Edit 禁止） | sonnet |
+### Context Isolation（コンテキスト分離）
 
-### 実装エージェント（`agents/implementation/`）
-
-`/implement` でタスクごとに起動されます。
-
-| エージェント | 役割 | モデル |
-|-------------|------|--------|
-| implementer | TDD 駆動の実装（RED → GREEN → REFACTOR） | sonnet |
-| spec-compliance-reviewer | 仕様書との照合・逸脱検出 | opus |
-| build-error-resolver | ビルドエラーの最小差分修正 | sonnet |
-
-### レビューエージェント（`agents/review/`）
-
-`/review` で 7 つ全てが並列起動されます。全て `model: opus`（読み取り専用）。
-
----
-
-## Context Isolation Policy
-
-Main Agent のコンテキストウィンドウを保護し、大規模実装でも破綻しないようにする 2 層分離ルールです。
-
-### 2 層アーキテクチャ + 動的モード選択
+Main Agent のコンテキストウィンドウを保護するため、2 層アーキテクチャを採用しています。
 
 ```
-Main Agent（オーケストレーション層 / チームリーダー）
+Main Agent（オーケストレーション専任）
   │
-  ├─ [Teams モード] --teams フラグ
-  │   TeamCreate → teammate 間で SendMessage による直接通信
-  │   エージェント間の情報共有・フィードバックが成果を改善する場面で使用
+  │  仕様書・タスクリストを読み込み、作業を分配
+  │  ※ 実装ファイルの Read / Write / Edit は禁止
   │
-  └─ [Sub Agents モード] --agents フラグ（デフォルト）
-      Task(subagent) × N → 独立した並列実行
-      各エージェントが独立して作業でき、やりとりが不要な場面で使用
+  ├─ [Teams モード] --teams
+  │   teammate 間で直接通信。フィードバックが必要な場面向け
+  │
+  └─ [Sub Agents モード] --agents（デフォルト）
+      独立した並列実行。各タスクが独立して完了できる場面向け
 ```
 
-### Main Agent の責務と制限
+### スキルシステム
 
-| 許可 | 禁止 |
-|------|------|
-| `.md` ファイル（仕様書・設計書）の Read | 実装ファイル（`.ts`, `.tsx`）の Read |
-| `git diff --stat` の実行 | `git diff`（全内容表示） |
-| タスク分析・依存関係構築 | Write / Edit で実装ファイルを編集 |
-| Sub Agent / Team の起動・管理 | SKILL.md の Read（名前のみ渡す） |
-| 検証コマンド実行（`npm test`, `tsc --noEmit`） | 型エラー・lint エラーの直接修正 |
+スキルはエージェントの行動規範を定義する知識ファイルです。**1% ルール** — 1% でも適用される可能性があれば呼び出します。
 
----
-
-## スキル
-
-エージェントの行動規範を定義する方法論とドメイン知識です。**1% ルール**: 1% でも適用される可能性があれば、そのスキルを呼び出します。
-
-### 方法論スキル
+**方法論スキル**（開発手法を規定）:
 
 | スキル | 概要 |
 |--------|------|
-| forge-skill-orchestrator | 作業開始時のスキル判定・ルーティング（Phase-Aware サフィックス判定） |
-| skill-phase-formatter | ドメイン Skill の Phase-Aware 分割基準・手順・検証項目を定義 |
-| test-driven-development | TDD の絶対ルール。テスト前のコードは削除してやり直し |
-| systematic-debugging | 再現→原因特定→修正→防御の 4 フェーズデバッグ |
+| test-driven-development | TDD の厳格ルール。テスト前のコードは書き直し |
+| systematic-debugging | 再現→原因特定→修正→防御の 4 フェーズ |
 | verification-before-completion | テスト実行結果を貼り付けて完了を証明 |
 | iterative-retrieval | Glob → Grep → Read で段階的にコンテキスト取得 |
-| strategic-compact | コンテキストウィンドウ 80% 超過時の手動コンパクション |
+| strategic-compact | コンテキスト 80% 超過時の手動コンパクション |
 
-### ドメインスキル（Phase-Aware File Structure）
+**ドメインスキル**（技術領域の知識）:
 
-9 個のドメインスキルは、フェーズに応じて異なる粒度の知識を提供する 3 ファイル構成です。
+フレームワーク・ORM・IaC・セキュリティなど、技術領域ごとのベストプラクティスを定義します。同梱のスキルは `skills/` で確認できます。独自のドメインスキルを追加することも可能です。
+
+ドメインスキルはフェーズに応じて異なる粒度の知識を提供する **Phase-Aware 3 ファイル構成** です。
 
 ```
 skills/<skill-name>/
-├── SKILL.md           # マスター（SSOT）。実装用フル知識 ~500行
-├── design.md          # 設計向け。/spec で使用 ~80-120行
-└── constraints.md     # 制約のみ。/brainstorm で使用 ~20-30行
+├── SKILL.md           # フル知識（~500行）— /implement, /review で使用
+├── design.md          # 設計指針（~120行）— /spec で使用
+└── constraints.md     # 制約のみ（~30行）— /brainstorm で使用
 ```
 
-| フェーズ | 読み込みファイル | コンテキスト効率 |
-|---------|----------------|-----------------|
-| `/brainstorm` | constraints.md | ~20-30行/Skill |
-| `/spec` | design.md | ~80-120行/Skill |
-| `/implement`, `/review` | SKILL.md（フル） | ~500行/Skill |
+フェーズごとに必要最小限の知識だけをロードし、コンテキストウィンドウを節約します。
 
-| スキル | 領域 |
+### フック（自動ガードレール）
+
+コード品質を自動的に守る仕組みです。
+
+| フック | 動作 |
 |--------|------|
-| prisma-expert | Prisma スキーマ設計、クエリ最適化、N+1 防止 |
-| database-migrations | ゼロダウンタイムマイグレーション、Expand-Contract パターン |
-| next-best-practices | Next.js App Router、Server/Client Components |
-| nextjs-api-patterns | Route Handlers、Server Actions、Zod バリデーション |
-| security-patterns | OWASP Top 10、XSS/CSRF/SQLi 防止、認証・認可 |
-| architecture-patterns | SOLID、DDD、レイヤードアーキテクチャ、ADR |
-| terraform-gcp-expert | GCP リソース設計、モジュール構成、IAM |
-| vercel-react-best-practices | React パフォーマンス、hooks 設計、状態管理 |
-| vercel-composition-patterns | Compound Components、Container/Presentational |
+| block-unnecessary-files | プロジェクトルートへの不要ファイル作成をブロック |
+| detect-console-log | デバッグ用ログの消し忘れを警告 |
+| require-tmux-for-servers | 長時間プロセスを tmux 外で実行するのをブロック |
+| gate-git-push | `git push` 時にレビュー完了を確認。`--force` はブロック |
 
-### スキル注入メカニズム
+同梱のフックは `hooks/` で定義されています。プロジェクトに合わせてカスタマイズできます。
 
-`forge-skill-orchestrator` がフェーズを検出し、ドメインスキルの読み込み方式を決定します。
+### OpenSpec 統合
 
-- **Skill ツール呼び出し**（`/implement`, `/review` 等）: スキル名のみを渡し、Claude Code が SKILL.md を自動解決
-- **Read ツール読み込み**（`/brainstorm`, `/spec`）: Phase-Aware ファイル（`constraints.md` / `design.md`）のパスを直接指定
-- プロジェクト固有: `<project>/.claude/skills/`（優先度 1）
-- グローバル: `~/.claude/skills/`（優先度 2）
-- フォールバック: Phase-Aware ファイルが存在しない場合は Skill ツールで SKILL.md を使用
+Forge は [OpenSpec](https://github.com/openspec) の仕様管理手法を採用しています。仕様は Delta 記法 + Given/When/Then シナリオで記述され、「生きたドキュメント」として維持されます。
 
----
-
-## ルール
-
-### 常時読み込み: `rules/core-essentials.md`
-
-エスカレーションポリシー・セキュリティ必須事項・Git コミット形式の最小限ルールを常時適用します。
-
-### オンデマンド参照: `reference/`
-
-作業対象に応じて必要なファイルを読み込みます。
-
-| 参照ファイル | 読み込むタイミング |
-|-------------|-------------------|
-| `reference/typescript-rules.md` | TypeScript 実装・型設計時 |
-| `reference/coding-standards.md` | コーディング規約の確認時 |
-| `reference/core-rules.md` | フェーズ管理・検証ゲート確認時 |
-| `reference/workflow-rules.md` | セッション管理・チェックポイント時 |
-| `reference/common/coding-style.md` | ファイルサイズ・命名規約確認時 |
-| `reference/common/testing.md` | テスト作成・TDD 実践時 |
-| `reference/common/performance.md` | パフォーマンス最適化時 |
-| `reference/nextjs/conventions.md` | Next.js App Router 作業時 |
-| `reference/prisma/conventions.md` | Prisma スキーマ・クエリ作業時 |
-| `reference/terraform/conventions.md` | Terraform IaC 作業時 |
+```
+openspec/
+├── project.md              # プロジェクトコンテキスト
+├── specs/                  # 累積スペック（マージ済みの正式仕様）
+└── changes/                # 変更単位の作業ディレクトリ
+    ├── <change-name>/      # アクティブな変更
+    │   ├── proposal.md     # /brainstorm で生成
+    │   ├── design.md       # /spec で生成
+    │   ├── tasks.md        # /spec で生成
+    │   └── specs/          # デルタスペック
+    └── archive/            # /compound で完了分をアーカイブ
+```
 
 ---
 
-## フック
+## カスタマイズ
 
-コード品質を自動的に守るガードレールです。
+### ユーザー独自のコマンド・スキルを追加
 
-### 品質ゲート
+`~/.claude/` 配下にファイルを追加するだけです。Forge のシンボリックリンクと共存できます。
 
-| フック | タイミング | 動作 |
-|--------|-----------|------|
-| block-unnecessary-files | Write 前 | プロジェクトルートへの不要な .md/.txt 作成をブロック（`docs/`、`openspec/` 配下は許可） |
-| detect-console-log | Write 後 | .ts/.tsx ファイル内の `console.log` を警告（`console.error`/`console.warn` は許可） |
-| require-tmux-for-servers | Bash 前 | `npm run dev` 等の長時間プロセスを tmux 外で実行するのをブロック |
-| gate-git-push | Bash 前 | `git push` 時にレビュー完了を確認。`--force` はブロック |
+```bash
+# カスタムコマンドの追加
+cat > ~/.claude/commands/my-command.md << 'EOF'
+あなたは...
+EOF
 
-### セッション管理
+# カスタムスキルの追加
+mkdir -p ~/.claude/skills/my-skill
+cat > ~/.claude/skills/my-skill/SKILL.md << 'EOF'
+# My Skill
+...
+EOF
+```
 
-| フック | タイミング | 動作 |
-|--------|-----------|------|
-| session-start | セッション開始時 | セッション統計の表示、コンテキスト読み込み |
-| session-end | セッション終了時 | チェックポイント保存、学びの同期 |
-| pre-compact | コンパクション前 | コンテキスト圧縮前の重要情報保護 |
+### ルールのカスタマイズ
 
-### 自動化
+ルールは 2 層構造です。
 
-| フック | タイミング | 動作 |
-|--------|-----------|------|
-| detect-corrections | 監視 | Claude の自己修正パターンを検出 |
-| task-completed | タスク完了時 | タスク完了後の自動処理 |
+- **`rules/`** — 常時読み込みされる基本ルール（エスカレーション・セキュリティ・Git 規約）
+- **`reference/`** — オンデマンドで参照される詳細ルール（言語規約・テスト・フレームワーク固有）
 
----
+`reference/` 配下にプロジェクト固有のルールファイルを追加できます。
 
-## エスカレーション
+### settings.json
 
-エージェントが曖昧な判断や高影響の意思決定に遭遇した際に、自動処理せずユーザーに確認を求めるフレームワークです。
-
-### 3 段階のエスカレーションレベル
-
-| レベル | 説明 | 例 |
-|--------|------|----|
-| 必須エスカレーション | 必ずユーザーに確認 | セキュリティ設計、DB スキーマ変更、破壊的 API 変更 |
-| 状況依存エスカレーション | 判断困難な場合に確認 | 仕様の曖昧性、リサーチ結果の矛盾、レビュアー間の矛盾 |
-| 自律判断 OK | 確認不要 | フォーマット修正、明らかなバグ修正、P3 対応 |
-
-### エスカレーションが発生するフェーズ
-
-| フェーズ | トリガー |
-|----------|---------|
-| `/spec` Phase 1.5 | リサーチ結果の矛盾、複数のアーキテクチャ選択肢 |
-| `/implement` Step 2 | セキュリティ・DB・アーキテクチャ関連タスク、仕様の曖昧性 |
-| `/review` 結果検証 | レビュアー間の矛盾、アーキテクチャ変更を伴う P1 指摘 |
-
-詳細は `rules/core-essentials.md` を参照。
+初回インストール時にコピーされます。既存の設定がある場合は上書きしません。設定を更新する場合は `settings.template.json` をテンプレートとして参照してください。
 
 ---
 
-## リポジトリ構造
-
-本リポジトリの構造です。`bash install.sh` でシンボリックリンク方式でインストールできます。
+## リポジトリ構成
 
 ```
 forge/
-├── README.md
-├── CLAUDE.md                        # ワークフローシステム定義
-├── install.sh                       # シンボリックリンク方式インストーラー
-├── uninstall.sh                     # アンインストーラー
-├── forge-system-prompt.md           # システムプロンプトテンプレート
-├── settings.json                    # → ~/.claude/settings.json
-├── settings.template.json           # 設定テンプレート
+├── install.sh / uninstall.sh     # インストーラー
+├── CLAUDE.md                      # プロジェクト CLAUDE.md テンプレート
+├── USER-CLAUDE.md                 # ユーザー CLAUDE.md テンプレート
+├── settings.json                  # Claude Code 設定
 │
-├── commands/                        # → ~/.claude/commands/
+├── commands/                      # スラッシュコマンド定義
 │   ├── brainstorm.md
 │   ├── spec.md
 │   ├── implement.md
@@ -584,187 +356,28 @@ forge/
 │   ├── handle-pr-review.md
 │   └── skill-format.md
 │
-├── agents/                          # → ~/.claude/agents/
-│   ├── research/
-│   │   ├── stack-docs-researcher.md
-│   │   ├── codebase-analyzer.md
-│   │   ├── web-researcher.md
-│   │   └── compound-learnings-researcher.md
-│   ├── spec/
-│   │   ├── spec-writer.md
-│   │   └── spec-validator.md
-│   ├── orchestration/
-│   │   └── implement-orchestrator.md
-│   ├── implementation/
-│   │   ├── implementer.md
-│   │   ├── spec-compliance-reviewer.md
-│   │   └── build-error-resolver.md
-│   └── review/
-│       ├── security-sentinel.md
-│       ├── performance-oracle.md
-│       ├── architecture-strategist.md
-│       ├── prisma-guardian.md
-│       ├── terraform-reviewer.md
-│       ├── type-safety-reviewer.md
-│       └── api-contract-reviewer.md
+├── agents/                        # エージェント定義
+│   ├── research/                  #   リサーチ（4種）
+│   ├── spec/                      #   スペック（2種）
+│   ├── orchestration/             #   オーケストレーション（1種）
+│   ├── implementation/            #   実装（3種）
+│   └── review/                    #   レビュー（7種）
 │
-├── skills/                          # → ~/.claude/skills/
-│   ├── forge-skill-orchestrator/SKILL.md
-│   ├── skill-phase-formatter/SKILL.md
-│   ├── test-driven-development/SKILL.md
-│   ├── systematic-debugging/SKILL.md
-│   ├── verification-before-completion/SKILL.md
-│   ├── iterative-retrieval/SKILL.md
-│   ├── strategic-compact/SKILL.md
-│   ├── prisma-expert/{SKILL.md, design.md, constraints.md}
-│   ├── database-migrations/{SKILL.md, design.md, constraints.md}
-│   ├── next-best-practices/{SKILL.md, design.md, constraints.md}
-│   ├── nextjs-api-patterns/{SKILL.md, design.md, constraints.md}
-│   ├── security-patterns/{SKILL.md, design.md, constraints.md}
-│   ├── architecture-patterns/{SKILL.md, design.md, constraints.md}
-│   ├── terraform-gcp-expert/{SKILL.md, design.md, constraints.md}
-│   ├── vercel-react-best-practices/{SKILL.md, design.md, constraints.md}
-│   └── vercel-composition-patterns/{SKILL.md, design.md, constraints.md}
+├── skills/                        # スキル定義
+│   ├── forge-skill-orchestrator/  #   方法論スキル（SKILL.md のみ）
+│   ├── test-driven-development/
+│   ├── <domain-skill>/            #   ドメインスキル（3ファイル構成）
+│   │   ├── SKILL.md
+│   │   ├── design.md
+│   │   └── constraints.md
+│   └── ...
 │
-├── rules/                           # → ~/.claude/rules/
-│   └── core-essentials.md           # 常時読み込み
-│
-├── reference/                       # → ~/.claude/reference/
-│   ├── typescript-rules.md
-│   ├── coding-standards.md
-│   ├── core-rules.md
-│   ├── workflow-rules.md
-│   ├── common/
-│   │   ├── coding-style.md
-│   │   ├── testing.md
-│   │   └── performance.md
-│   ├── nextjs/conventions.md
-│   ├── prisma/conventions.md
-│   └── terraform/conventions.md
-│
-├── hooks/                           # → ~/.claude/hooks/
-│   ├── block-unnecessary-files.js
-│   ├── detect-console-log.js
-│   ├── require-tmux-for-servers.js
-│   ├── gate-git-push.js
-│   ├── session-start.js
-│   ├── session-end.js
-│   ├── pre-compact.js
-│   ├── detect-corrections.js
-│   ├── task-completed.js
-│   └── package.json
-│
-├── docs/                            # → ~/.claude/docs/
-│   ├── compound/                    # 複利ドキュメント
-│   ├── designs/
-│   └── specs/
-│
-└── openspec/                        # OpenSpec 仕様管理
-    ├── specs/                       # 累積スペック（マージ済み）
-    └── changes/                     # 変更単位の作業ディレクトリ
-        └── archive/                 # 完了した変更のアーカイブ
+├── rules/                         # 常時読み込みルール
+├── reference/                     # オンデマンド参照ルール
+├── hooks/                         # フック（自動ガードレール）
+├── docs/                          # 複利ドキュメント
+└── openspec/                      # OpenSpec 仕様管理
 ```
-
----
-
-## 開発フロー図
-
-```
-  ユーザー
-    │
-    │ /ship（または個別コマンド）
-    ▼
-┌──────────┐
-│brainstorm│ ソクラテス式対話 → 提案書
-└────┬─────┘
-     │ ユーザー承認
-     ▼
-┌──────────┐   ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│   spec   │──▶│stack-docs    │  │web-researcher│  │codebase-     │
-│          │──▶│researcher    │  │              │  │analyzer      │
-│          │──▶│              │  │              │  │              │
-│          │──▶│compound-     │  │              │  │              │
-│          │   │learnings     │  │              │  │              │
-│          │   └──────────────┘  └──────────────┘  └──────────────┘
-│          │          ↓ リサーチ結果統合
-│          │   ┌──────────────┐
-│          │──▶│ spec-writer  │→ design.md / tasks.md / delta-spec
-└────┬─────┘   └──────────────┘
-     │ ユーザー承認
-     ▼
-┌──────────┐   Teams モード / Sub Agents モード:
-│implement │──▶ implementer × N → spec-compliance → build-error
-└────┬─────┘   （Context Isolation: Main Agent は実装に触れない）
-     ▼
-┌──────────┐   7 レビュアー並列:
-│  review  │──▶ security / performance / architecture / prisma
-└────┬─────┘   terraform / type-safety / api-contract
-     │ P1/P2 自動修正
-     ▼
-┌──────────┐
-│   test   │ vitest → tsc → eslint → build → playwright
-└────┬─────┘ （失敗時: 最大 3 回リトライ）
-     ▼
-┌──────────┐
-│ compound │ 学びを記録 + スペックマージ + アーカイブ
-└──────────┘
-```
-
----
-
-## MCP サーバー設定
-
-このシステムは以下の MCP サーバーを前提とします。
-
-### Context7 MCP（必須）
-
-フレームワーク公式ドキュメントの取得に使用します。`/spec` の `stack-docs-researcher` エージェントが利用します。
-
-### Web Search MCP（必須、以下のいずれか）
-
-Web 検索に使用します。`/spec` の `web-researcher` エージェントが利用します。
-
-- **Brave Search MCP**: `@anthropic/brave-search-mcp`
-- **Tavily MCP**: `tavily-mcp`
-
----
-
-## OpenSpec 統合
-
-Forge は [OpenSpec](https://github.com/openspec) の累積仕様・Delta 記法・Given/When/Then シナリオを採用し、仕様を「生きたドキュメント」として維持します。
-
-### `openspec/` ディレクトリ構成
-
-```
-openspec/
-├── project.md              # プロジェクトコンテキスト（brainstorm時に自動生成）
-├── specs/                  # 累積スペック（マージ済みの正式仕様）
-│   └── <feature>/
-│       └── spec.md
-└── changes/                # 変更単位の作業ディレクトリ
-    ├── <change-name>/      # アクティブな変更
-    │   ├── proposal.md     # 提案書（/brainstorm で生成）
-    │   ├── design.md       # 技術設計（/spec で生成）
-    │   ├── tasks.md        # タスクリスト（/spec で生成）
-    │   └── specs/          # デルタスペック（/spec で生成）
-    │       └── <feature>/
-    │           └── delta-spec.md
-    └── archive/            # 完了した変更のアーカイブ
-        └── YYYY-MM-DD-<change-name>/
-```
-
-### Forge コマンドと OpenSpec 構造のマッピング
-
-| コマンド | OpenSpec 操作 |
-|---------|--------------|
-| `/brainstorm` | `openspec/changes/<change-name>/proposal.md` を生成 |
-| `/spec` | `openspec/changes/<change-name>/` 配下に `specs/`, `design.md`, `tasks.md` を生成 |
-| `/implement` | `openspec/changes/<change-name>/` から仕様を読み込んで実装 |
-| `/compound` | デルタスペックを `openspec/specs/` にマージし、変更をアーカイブ |
-
-### `openspec` CLI との互換性
-
-OpenSpec の標準ディレクトリ構成をそのまま採用しているため、`openspec` CLI との互換性があります。
 
 ---
 
