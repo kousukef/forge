@@ -268,6 +268,14 @@ skills/<skill-name>/
 
 フェーズごとに必要最小限の知識だけをロードし、コンテキストウィンドウを節約します。
 
+`design.md` と `constraints.md` は Forge が `/brainstorm` や `/spec` でスキルを参照する際に使用するファイルです。新しいドメインスキルを追加した場合は、`SKILL.md` を作成した後に以下のコマンドを実行してください：
+
+```
+/skill-format <skill-name>
+```
+
+`SKILL.md` の内容から `design.md` と `constraints.md` が自動生成されます。
+
 ### フック（自動ガードレール）
 
 コード品質を自動的に守る仕組みです。
