@@ -2,7 +2,7 @@
 
 ## テスト戦略
 
-- ユニットテスト: 同期チェックフック（`hooks/check-config-sync.js`）のロジックを Node.js テストで検証
+- ユニットテスト: なし（.md ファイルの変更が主体のため）
 - 統合テスト: なし（.md ファイルの変更が主体のため）
 - E2Eテスト: なし（コマンド定義・エージェント定義は Claude Code ランタイムで検証）
 - 手動検証: 各 .md ファイルの構造・内容・リンク整合性を目視確認
@@ -27,18 +27,10 @@
 
 ### Task 4: compound learnings 防止策棚卸し（推定: 5分）
 - **対象ファイル**: `docs/compound/2026-02-18-agent-teams-workflow-redesign.md`（既存）、`docs/compound/2026-02-18-add-command-arguments.md`（既存）、`docs/compound/2026-02-22-change-commit-timing.md`（既存）、`docs/compound/2026-02-24-add-domain-skills.md`（既存）
-- **やること**: 4件の compound learnings の防止策セクションを走査し、未チェック（`- [ ]`）の項目を一覧化する。本変更で対応する項目を特定し、チェックボックスを更新する（同期漏れ関連: REQ-002 で対応 → `- [x]` に更新）。対応しない項目はそのまま残す
+- **やること**: 4件の compound learnings の防止策セクションを走査し、未チェック（`- [ ]`）の項目を一覧化する。本変更で対応する項目を特定し、チェックボックスを更新する。対応しない項目はそのまま残す
 - **検証方法**: `grep -r '\- \[ \]' docs/compound/` で未チェック項目を確認。本変更で対応するものが `- [x]` に更新されていることを確認
 - **関連要件**: REQ-003
 - **関連スペック**: `specs/forge-internal-optimization/delta-spec.md#REQ-003`
-- **依存**: なし
-
-### Task 5: 同期チェックフックの実装（推定: 5分）
-- **対象ファイル**: `~/.claude/hooks/check-config-sync.js`（新規、グローバル側に配置 -- 既存パターン踏襲）
-- **やること**: Node.js スクリプトで同期チェックフックを実装する。既存の `~/.claude/hooks/block-unnecessary-files.js` のパターン（`process.argv[2]` で入力受取、exit code）に従う。デフォルト比較対象: `commands/` と `CLAUDE.md`。設定で追加の比較対象ディレクトリを指定可能な構造にする。プロジェクト側のみに存在するファイルはスキップ。差異がある場合は `process.stderr.write()` で警告（stderr に出力しないと Claude にフィードバックが伝わらない）、exit 0 で終了。**注意**: exit 1 は非ブロッキング警告、exit 2 はブロッキングエラー。本フックは exit 0（成功）を使用する
-- **検証方法**: `node ~/.claude/hooks/check-config-sync.js` で手動実行。意図的に差異を作って警告が出ることを確認
-- **関連要件**: REQ-002, REQ-013
-- **関連スペック**: `specs/forge-internal-optimization/delta-spec.md#REQ-002`, `specs/forge-internal-optimization/delta-spec.md#REQ-013`
 - **依存**: なし
 
 ### Task 6: compound.md に Learning Router ドメイン分類テーブル追加（推定: 4分）
@@ -83,19 +75,11 @@
 
 ### Task 11: CLAUDE.md の更新（推定: 4分）
 - **対象ファイル**: `CLAUDE.md`（既存、プロジェクト）、`~/.claude/CLAUDE.md`（既存、グローバル）
-- **やること**: (1) Available Agents テーブルに project-knowledge-writer（実装カテゴリ）と domain-analyzer（リサーチカテゴリ）を追加。(2) Hook 自動ガードレールテーブルに check-config-sync を追加。(3) Available Commands に /forge-init を追加（該当セクションがある場合）。(4) プロジェクト CLAUDE.md とグローバル CLAUDE.md の両方を同一内容に更新
+- **やること**: (1) Available Agents テーブルに project-knowledge-writer（実装カテゴリ）と domain-analyzer（リサーチカテゴリ）を追加。(2) Available Commands に /forge-init を追加（該当セクションがある場合）。(3) プロジェクト CLAUDE.md とグローバル CLAUDE.md の両方を同一内容に更新
 - **検証方法**: `diff CLAUDE.md ~/.claude/CLAUDE.md` で差異がないことを確認（該当セクション）。新しいエントリが正しい位置に追加されていることを確認
-- **関連要件**: REQ-012, REQ-014
-- **関連スペック**: `specs/forge-internal-optimization/delta-spec.md#REQ-012`, `specs/forge-internal-optimization/delta-spec.md#REQ-014`
-- **依存**: Task 5, Task 9, Task 10
-
-### Task 12: フック設定の登録（推定: 3分）
-- **対象ファイル**: `.claude/settings.local.json`（既存）
-- **やること**: check-config-sync.js をフック設定に登録する。**注意: 現在 `~/.claude/settings.json` に `hooks` キーが存在しない（フック基盤が非アクティブ）**。プロジェクトレベルの `.claude/settings.local.json` に `hooks` セクションを新規追加し、PostToolUse（matcher: "Write|Edit"）で `node ~/.claude/hooks/check-config-sync.js "$TOOL_INPUT"` を登録する。timeout: 10秒を設定。既存4フック（block-unnecessary-files 等）の復元は本タスクのスコープ外
-- **検証方法**: settings.local.json の diff を確認。hooks セクションが正しい JSON 形式であることを確認。Claude Code を再起動してフックが発火することを確認
-- **関連要件**: REQ-002, REQ-013
-- **関連スペック**: `specs/forge-internal-optimization/delta-spec.md#REQ-002`, `specs/forge-internal-optimization/delta-spec.md#REQ-013`
-- **依存**: Task 5
+- **関連要件**: REQ-012
+- **関連スペック**: `specs/forge-internal-optimization/delta-spec.md#REQ-012`
+- **依存**: Task 9, Task 10
 
 ### Task 12.5: domain-analyzer エージェント定義の作成（推定: 4分）
 - **対象ファイル**: `agents/research/domain-analyzer.md`（新規、`agents/research/` に配置 -- 既存パターン踏襲）
@@ -115,8 +99,8 @@
 
 ### Task 13: 最終検証 -- 全ファイルの整合性確認（推定: 3分）
 - **対象ファイル**: 全変更ファイル
-- **やること**: (1) 全新規ファイルの存在確認（docs/domain/README.md, docs/inbox/README.md, ~/.claude/hooks/check-config-sync.js, commands/forge-init.md, agents/research/project-knowledge-writer.md, agents/research/domain-analyzer.md）。(2) 全修正ファイルの差分確認（commands/compound.md, commands/brainstorm.md, commands/spec.md, CLAUDE.md x2, .claude/settings.local.json）。(3) プロジェクト/グローバル CLAUDE.md の同期確認。(4) delta-spec.md の各 REQ-XXX が tasks.md の関連要件に参照されていることを確認。(5) .claude/settings.local.json に hooks セクションが存在し、~/.claude/hooks/check-config-sync.js が登録されていることを確認。(6) `npx tsc --noEmit` が通ることを確認（.ts/.tsx の変更がないため PASS 想定）
+- **やること**: (1) 全新規ファイルの存在確認（docs/domain/README.md, docs/inbox/README.md, commands/forge-init.md, agents/research/project-knowledge-writer.md, agents/research/domain-analyzer.md）。(2) 全修正ファイルの差分確認（commands/compound.md, commands/brainstorm.md, commands/spec.md, CLAUDE.md x2）。(3) プロジェクト/グローバル CLAUDE.md の同期確認。(4) delta-spec.md の各 REQ-XXX が tasks.md の関連要件に参照されていることを確認。(5) `npx tsc --noEmit` が通ることを確認（.ts/.tsx の変更がないため PASS 想定）
 - **検証方法**: 上記の確認項目を1つずつ実行し、全項目 PASS であることを確認
 - **関連要件**: 全 REQ
 - **関連スペック**: `specs/forge-internal-optimization/delta-spec.md`
-- **依存**: Task 2, Task 3, Task 4, Task 5, Task 6, Task 7, Task 8, Task 9, Task 10, Task 11, Task 12, Task 12.5, Task 12.7
+- **依存**: Task 2, Task 3, Task 4, Task 6, Task 7, Task 8, Task 9, Task 10, Task 11, Task 12.5, Task 12.7

@@ -2,30 +2,6 @@
 
 ## ADDED Requirements
 
-### Requirement: REQ-002 プロジェクト/グローバル設定同期チェックフック
-
-`.claude/settings.local.json` の hooks セクションに PostToolUse（matcher: "Write|Edit"）として同期チェックフックを登録し、プロジェクト側とグローバル側（`~/.claude/`）の設定ファイルの差異を自動検出しなければならない（SHALL）。比較対象ディレクトリは設定で拡張可能とし、デフォルトは `commands/` と `CLAUDE.md` とする。
-
-#### Happy Path Scenarios
-- **GIVEN** Write または Edit ツールが使用された **WHEN** PostToolUse フックとして同期チェックフックが実行される **THEN** プロジェクト側（デフォルト: `commands/`, `CLAUDE.md`）とグローバル側（`~/.claude/commands/`, `~/.claude/CLAUDE.md`）の対応ファイルを比較し、差異があれば一覧を stderr で警告表示する
-- **GIVEN** プロジェクト側とグローバル側のファイルが完全に一致している **WHEN** 同期チェックフックが実行される **THEN** 差異なしとして正常終了する（メッセージなし）
-- **GIVEN** フックの設定に比較対象ディレクトリが指定されている **WHEN** 同期チェックフックが実行される **THEN** 設定で指定されたディレクトリのみを比較対象とする
-
-#### Error Scenarios
-- **GIVEN** グローバル側のディレクトリ（`~/.claude/`）が存在しない **WHEN** 同期チェックフックが実行される **THEN** 「グローバル設定ディレクトリが見つかりません」と stderr で警告し、フック処理を exit 0 で終了する（ブロッキングしない）
-- **GIVEN** プロジェクト側に対応するディレクトリが存在しない **WHEN** 同期チェックフックが実行される **THEN** 比較対象がないためスキップし、フック処理を exit 0 で正常終了する
-
-#### Boundary Scenarios
-- **GIVEN** 差異のあるファイルが10個以上 **WHEN** 差異を表示する **THEN** 全ファイルの差異を省略なく一覧表示する
-- **GIVEN** バイナリファイルが比較対象に含まれる **WHEN** 比較を実行する **THEN** バイナリファイルはスキップし、テキストファイルのみ比較する
-- **GIVEN** フックの設定に比較対象ディレクトリが未指定（デフォルト） **WHEN** 同期チェックフックが実行される **THEN** `commands/` と `CLAUDE.md` をデフォルトの比較対象とする
-
-#### Non-Functional Requirements
-- **PERFORMANCE**: フック実行時間は2秒以内に完了する SHALL（大量ファイルでも）
-- **RELIABILITY**: フックの失敗がメインワークフローをブロックしない SHALL。フック内部でエラーが発生した場合は警告のみ出力して exit 0 で終了する
-
----
-
 ### Requirement: REQ-003 docs/compound/ 防止策棚卸し
 
 既存の compound learnings に記載された防止策（`- [ ]` チェックボックス）の実施状況を棚卸しし、未実施の防止策を特定しなければならない（SHALL）。
@@ -201,42 +177,7 @@
 - **GIVEN** グローバル CLAUDE.md を更新する **WHEN** プロジェクト CLAUDE.md を検証する **THEN** 両方のファイルの Available Agents テーブルが同一内容である
 
 #### Error Scenarios
-- **GIVEN** CLAUDE.md の更新が一方のみ実施された **WHEN** 同期チェックフック（REQ-002）が実行される **THEN** 差異が検出され警告が表示される
-
----
-
-### Requirement: REQ-013 同期チェックフックの実装
-
-同期チェックフック `~/.claude/hooks/check-config-sync.js` を作成しなければならない（SHALL）。既存のフック定義パターン（`~/.claude/hooks/block-unnecessary-files.js` 等）に従う。
-
-#### Happy Path Scenarios
-- **GIVEN** `~/.claude/hooks/check-config-sync.js` が作成されている **WHEN** `.claude/settings.local.json` の hooks セクションに PostToolUse（matcher: "Write|Edit"）として登録される **THEN** Write/Edit ツール使用後にフックが自動実行される
-- **GIVEN** フックがプロジェクト側とグローバル側の両方に存在するファイルを比較する **WHEN** 内容が異なる **THEN** 差異のあるファイル名を警告表示する
-- **GIVEN** `~/.claude/hooks/check-config-sync.js` がデフォルト設定で実行される **WHEN** 比較対象を決定する **THEN** `commands/` と `CLAUDE.md` を比較対象とする
-
-#### Error Scenarios
-- **GIVEN** フック実行中にファイル読み込みエラーが発生する **WHEN** 比較対象ファイルのパスが不正 **THEN** エラーをキャッチし、exit 0 で終了する（メインワークフローをブロックしない）
-- **GIVEN** 現在 `~/.claude/settings.json` に hooks キーが存在しない（フック基盤が非アクティブ） **WHEN** 同期チェックフックを登録する **THEN** プロジェクトレベルの `.claude/settings.local.json` に hooks セクションを新規追加して登録する
-
-#### Boundary Scenarios
-- **GIVEN** プロジェクト側にのみ存在するファイル（グローバル側に対応ファイルがない） **WHEN** 比較を実行する **THEN** 比較対象外としてスキップする（プロジェクト側のみの運用が意図的な可能性があるため）
-- **GIVEN** フック設定でカスタム比較対象（例: `agents/`, `reference/`）が追加指定されている **WHEN** 比較を実行する **THEN** デフォルト対象に加えてカスタム対象も比較する
-
-#### Non-Functional Requirements
-- **RELIABILITY**: フックの失敗はメインワークフローをブロックしない SHALL。全てのエラーケースで exit 0 で終了する
-- **PERFORMANCE**: ファイル比較は大きなファイルでも2秒以内に完了する SHALL
-
----
-
-### Requirement: REQ-014 フック設定の更新
-
-CLAUDE.md の Hook 自動ガードレールテーブルに同期チェックフックを追加しなければならない（SHALL）。
-
-#### Happy Path Scenarios
-- **GIVEN** check-config-sync フックが実装された **WHEN** CLAUDE.md の Hook テーブルを更新する **THEN** `| check-config-sync | プロジェクト/グローバル設定差異を警告 |` の行が追加されている
-
-#### Error Scenarios
-- **GIVEN** CLAUDE.md の Hook テーブルの更新がプロジェクト側のみ実施された **WHEN** 同期を検証する **THEN** グローバル CLAUDE.md も同一内容に更新する
+- **GIVEN** CLAUDE.md の更新が一方のみ実施された **WHEN** 同期を検証する **THEN** 手動で差異を確認し、両ファイルを同一内容に更新する
 
 ---
 
