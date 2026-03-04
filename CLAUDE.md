@@ -62,7 +62,7 @@ openspec/
 
 | カテゴリ | Agents |
 |---|---|
-| リサーチ | stack-docs-researcher, web-researcher, codebase-analyzer, compound-learnings-researcher |
+| リサーチ | stack-docs-researcher, web-researcher, codebase-analyzer, compound-learnings-researcher, project-knowledge-writer, domain-analyzer |
 | スペック | spec-writer, spec-validator(opus) |
 | オーケストレーション | implement-orchestrator（`claude --agent` メインスレッド専用） |
 | 実装 | implementer, spec-compliance-reviewer(opus), build-error-resolver |
