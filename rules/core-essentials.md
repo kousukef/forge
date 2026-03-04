@@ -31,11 +31,11 @@
 
 - ハードコードされたシークレット・APIキー禁止
 - 環境変数は `.env.local`（開発）、Secret Manager（本番）
-- ユーザー入力は必ずZodでバリデーション
-- SQLインジェクション防止: Prismaパラメータ化クエリのみ
-- XSS防止: `dangerouslySetInnerHTML` 禁止
-- CSRF: Server Actionsは自動保護、Route Handlersは明示的対策
-- 認証: middleware.tsでルートレベル保護
+- ユーザー入力は必ずスキーマバリデーションを適用
+- SQLインジェクション防止: パラメータ化クエリのみ使用
+- XSS防止: 生HTMLの出力を禁止
+- CSRF: フレームワークの保護機構を活用し、必要に応じて明示的対策
+- 認証: ミドルウェアでルートレベル保護
 - 依存関係: `npm audit` でゼロ脆弱性維持
 
 ---
@@ -55,7 +55,7 @@ Main Agent はオーケストレーション専任。以下を厳守:
 | 禁止操作 | 代替手段 |
 |---|---|
 | Write/Edit で実装ファイル編集 | Task(implementer) に委譲 |
-| 実装ファイル（.ts/.tsx）の Read | Explore Agent / implementer に委譲 |
+| 実装ファイルの Read | Explore Agent / implementer に委譲 |
 | SKILL.md の Read | スキル名のみ決定、Claude Code が自動解決 |
 | `git diff`（内容表示） | `git diff --stat` のみ許可 |
 
@@ -76,13 +76,13 @@ Main Agent はオーケストレーション専任。以下を厳守:
 
 ## コード品質
 
-- TypeScript strict mode 準拠
+- 静的型チェックの厳格モード準拠（該当する場合）
 - 既存のコード規約・パターンを踏襲
 - コードやコメントにエモジを入れない
 - TDD: RED → GREEN → REFACTOR
 - テストをスキップ・無効化して通過させない
 - TODO/モック/スタブを本実装に残さない
-- `npx tsc --noEmit` をコミット前に実行
+- 静的解析ツールをコミット前に実行
 
 ---
 

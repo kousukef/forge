@@ -66,7 +66,7 @@ Main Agent（チームリーダー）
 
 以下の4つのリサーチエージェントを**並列で**起動する:
 
-1. **stack-docs-researcher** -- Context7 MCP経由で関連フレームワーク（Next.js, Prisma, Terraform, GCP等）の公式ドキュメントから該当機能のベストプラクティスを取得
+1. **stack-docs-researcher** -- Context7 MCP経由でプロジェクトの技術スタックに関連する公式ドキュメントからベストプラクティスを取得
 2. **web-researcher** -- Web Searchを使って以下を検索:
    - 該当技術の最新のベストプラクティス記事
    - 既知の落とし穴やバグレポート
@@ -81,25 +81,22 @@ Main Agent（チームリーダー）
 
 ### Phase 1.7: ドメイン判定
 
-proposal.md のキーワードからドメインを推論し、spec-writer / spec-validator に渡すドメイン Skill を決定する。
+proposal.md の内容に関連するドメインスキルを動的に発見し、spec-writer / spec-validator に渡すドメインコンテキストを決定する。
 
-#### キーワード推論テーブル
+#### 動的発見手順
 
-| キーワード | ドメイン | 読み込む design.md |
-|---|---|---|
-| データベース, テーブル, マイグレーション | prisma-database | `prisma-expert/design.md`, `database-migrations/design.md` |
-| API, エンドポイント, Route Handler | typescript-backend | `nextjs-api-patterns/design.md`, `security-patterns/design.md` |
-| 画面, コンポーネント, UI | nextjs-frontend | `next-best-practices/design.md`, `vercel-react-best-practices/design.md`, `vercel-composition-patterns/design.md` |
-| 認証, 認可, OAuth | security | `security-patterns/design.md` |
-| インフラ, Terraform, GCP | terraform-infrastructure | `terraform-gcp-expert/design.md` |
+1. `skills/` 配下のディレクトリをスキャンし、各スキルの SKILL.md から description を取得する（Methodology Skills は除外）
+2. proposal.md の内容と各スキルの description を LLM セマンティック判定で照合し、関連するスキルを決定する
+3. 関連すると判定されたスキルの design.md を DOMAIN CONTEXT FILES として注入する
+4. 複数のスキルが関連する場合、全ての design.md を Union で含める
 
-#### 判定ルール
+> **ドメインスキルが存在しない場合**: `skills/` にドメインスキルが存在しない場合は、ドメインコンテキストなしで仕様生成を進める。
 
-1. proposal.md のテキストをスキャンし、キーワード推論テーブルに該当するキーワードを検出する
-2. 該当する全ドメインの design.md を Union で含める（複数ドメイン該当時は全て含める）
-3. `architecture-patterns/design.md` を常に含める（proposal.md の内容に関わらず必須）
-4. 注入する design.md が6個以上になる場合、最大5個に制限する（`architecture-patterns/design.md` は必須枠として確保し、残り4枠をテーブル上位から選択）
-5. キーワードが一つも該当しない場合、`architecture-patterns/design.md` のみを注入する
+#### フォールバック
+
+関連スキルと判定されたが design.md が存在しない場合:
+1. フォールバックとして Skill ツールでスキル名を呼び出し、SKILL.md 全体を読み込む
+2. 「`/skill-format <skill-name>` で分割してください」と警告を出力する
 
 #### Skill の注入方法
 
@@ -111,9 +108,9 @@ REQUIRED SKILLS:
 - verification-before-completion
 
 DOMAIN CONTEXT FILES (Read ツールで直接読み込むこと):
-- ~/.claude/skills/architecture-patterns/design.md
-- ~/.claude/skills/[該当ドメイン Skill]/design.md
+- ~/.claude/skills/[関連ドメイン Skill]/design.md
 ※ ファイルが存在しない場合は Skill ツールで該当スキルを呼び出す
+※ 関連ドメイン Skill がない場合、このセクションは省略する
 ```
 
 ### Phase 1.5: リサーチ結果の検証（Sub Agents モードのみ）

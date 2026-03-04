@@ -110,15 +110,15 @@ Step 0 で決定した mode に基づいて分岐する:
    - 各 implementer プロンプトにスキル名（名前のみ）を含める
 
 2. **implementer 完了後の検証**
-   - `npx vitest run` / `npx tsc --noEmit` / `git diff --stat`
+   - プロジェクトのテストコマンド / プロジェクトの静的解析ツール / `git diff --stat`
    - 失敗時: Task(build-error-resolver) に委譲（最大3回リトライ）
    - 成功時: Task(spec-compliance-reviewer) でスペック準拠確認
 
 ### Step 5: 検証
 
 全タスク完了後:
-1. `npx vitest run` で全テスト実行
-2. `npx tsc --noEmit` で型チェック
+1. プロジェクトのテストコマンドで全テスト実行
+2. プロジェクトの静的解析ツールで型チェック・lint チェック
 3. `git diff --stat` で変更ファイル一覧を確認
 4. プロジェクト/グローバル同期確認: 変更ファイルに `~/.claude/` 配下のファイルが含まれる場合、リポジトリ内に対応ファイル（`agents/`, `commands/`, `reference/` 等）が存在するか確認し、不一致があればコピーによる同期を実施する
 
@@ -157,7 +157,7 @@ REQUIRED SKILLS:
 - test-driven-development
 - iterative-retrieval
 - verification-before-completion
-- [ドメイン固有スキル名]
+- [プロジェクト固有のドメインスキル（Auto-Discovery で自動注入）]
 
 PROJECT RULES（自分で Read して従うこと）:
 - CLAUDE.md

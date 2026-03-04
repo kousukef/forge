@@ -31,8 +31,8 @@ REQUIRED SKILLS:
 5. 要件が十分に固まったら変更名を決定する
 
 5.5. **技術的制約チェック**（constraints.md 参照）:
-   - 対象領域のキーワードからドメインを推論する（例: DB関連→`prisma-expert`、API関連→`nextjs-api-patterns`）
-   - 推論されたドメイン Skill の `constraints.md` を Read ツールで直接読み込む（パス: `~/.claude/skills/<skill-name>/constraints.md`）
+   - 対象領域に関連するドメインスキルを推論し、該当スキルの `constraints.md` が存在する場合に参照する
+   - ドメインスキルの `constraints.md` を Read ツールで直接読み込む（パス: `~/.claude/skills/<skill-name>/constraints.md` または `<project>/.claude/skills/<skill-name>/constraints.md`）
    - ファイルが存在しない場合はスキップする
    - **constraints.md のみ参照する**（design.md は参照しない。brainstorm は自由な発想を優先するため）
    - 要件と技術的制約の矛盾をチェックする

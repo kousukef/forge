@@ -84,8 +84,8 @@ $ARGUMENTS からモードを判定する:
 ```
 | Skill | SKILL.md | design.md | constraints.md | Status |
 |---|---|---|---|---|
-| prisma-expert | 500行 | 105行 | 25行 | OK |
-| next-best-practices | 446行 | - | - | 未分割 |
+| my-domain-skill | 500行 | 105行 | 25行 | OK |
+| my-other-skill | 446行 | - | - | 未分割 |
 | test-driven-development | 47行 | - | - | スキップ（方法論） |
 ```
 

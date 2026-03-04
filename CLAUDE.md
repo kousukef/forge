@@ -49,16 +49,10 @@ openspec/
 
 | Reference File | タイミング |
 |---|---|
-| `reference/typescript-rules.md` | TypeScript実装・型設計 |
 | `reference/coding-standards.md` | コーディング規約確認 |
 | `reference/core-rules.md` | フェーズ管理・検証ゲート |
 | `reference/workflow-rules.md` | セッション管理 |
-| `reference/common/coding-style.md` | ファイルサイズ・命名規約 |
 | `reference/common/testing.md` | テスト作成・TDD |
-| `reference/common/performance.md` | パフォーマンス最適化 |
-| `reference/nextjs/conventions.md` | Next.js App Router |
-| `reference/prisma/conventions.md` | Prisma |
-| `reference/terraform/conventions.md` | Terraform |
 
 ---
 
@@ -72,7 +66,7 @@ openspec/
 | スペック | spec-writer, spec-validator(opus) |
 | オーケストレーション | implement-orchestrator（`claude --agent` メインスレッド専用） |
 | 実装 | implementer, spec-compliance-reviewer(opus), build-error-resolver |
-| レビュー(opus) | security-sentinel, performance-oracle, architecture-strategist, prisma-guardian, terraform-reviewer, type-safety-reviewer, api-contract-reviewer, review-aggregator |
+| レビュー(opus) | review-aggregator + `agents/review/` 配下のカスタムレビュアー |
 
 ---
 
@@ -83,12 +77,12 @@ openspec/
 | カテゴリ | Skills |
 |---|---|
 | 方法論 | test-driven-development, systematic-debugging, verification-before-completion, iterative-retrieval, strategic-compact |
-| フロントエンド | next-best-practices, vercel-react-best-practices, vercel-composition-patterns, tailwind-best-practices, web-design-guidelines, ui-ux-pro-max-skill |
-| API/セキュリティ | nextjs-api-patterns, security-patterns |
-| データ | prisma-expert, database-migrations |
-| テスト | vitest-testing-patterns, webapp-testing |
-| インフラ | terraform-gcp-expert |
-| 設計 | architecture-patterns, skill-creator |
+| 設計 | skill-creator |
+
+> **拡張方法**:
+> - ドメインスキルは `/setup` コマンドで検索・インストール、または `<project>/.claude/skills/` に手動追加
+> - レビューエージェントは `agents/review/` に追加で自動認識
+> - リファレンスは `reference/` に追加
 
 ---
 
@@ -99,7 +93,7 @@ openspec/
 | Hook | Action |
 |---|---|
 | block-unnecessary-files | ルートへの .md/.txt 作成ブロック（docs/, openspec/ は許可） |
-| detect-console-log | .ts/.tsx 内の console.log を警告 |
+| detect-console-log | ソースファイル内のデバッグログを警告 |
 | require-tmux-for-servers | 長時間プロセスの tmux 強制 |
 | gate-git-push | force push ブロック、push 時チェックリスト |
 

@@ -31,19 +31,13 @@ description: "Use at the START of every task, before writing any code, running t
 | テスト実行・修正 | test | Skill ツール（SKILL.md 全体） |
 | 設計・要件整理 | design / spec | Read: `design.md` |
 
-## ドメイン検出テーブル
+## ドメイン検出
 
-対象ファイルのパスパターンからドメインを判定する:
+対象ファイルのパスパターンに基づいてドメインを判定する。ドメインスキルは Auto-Discovery で自動検出される。
 
-| ファイルパスパターン | ドメイン |
-|---|---|
-| `src/app/**/*.tsx`, `src/components/**/*.tsx` | nextjs-frontend |
-| `src/app/api/**/*.ts`, `src/actions/**/*.ts` | typescript-backend |
-| `prisma/**/*`, `*.prisma` | prisma-database |
-| `terraform/**/*`, `*.tf` | terraform-infrastructure |
-| `e2e/**/*`, `**/*.spec.ts`, `**/*.e2e.ts` | testing |
-| `src/**/*.ts` (上記以外) | typescript-backend |
-| 複数ドメインにまたがる場合 | 該当する全ドメインの Union |
+- プロジェクト固有スキル（`<project>/.claude/skills/`）およびグローバルスキル（`~/.claude/skills/`）に配置されたドメインスキルを Claude Code が自動検出する
+- 複数ドメインにまたがる場合は、該当する全ドメインの Union で適用する
+- ドメインスキルが存在しない場合は、Methodology Skills のみで処理を進める
 
 ## Methodology Skills レジストリ（universal -- 全ドメイン共通）
 
@@ -80,11 +74,9 @@ description: "Use at the START of every task, before writing any code, running t
    - verification-before-completion
 
    DOMAIN CONTEXT FILES (Read ツールで直接読み込むこと):
-   - ~/.claude/skills/<skill-name>/<phase-file>.md
-   例:
-   - ~/.claude/skills/prisma-expert/design.md
-   - ~/.claude/skills/architecture-patterns/design.md
-   ※ ファイルが存在しない場合は Skill ツールで <skill-name> を呼び出す
+   - ~/.claude/skills/<your-domain-skill>/<phase-file>.md
+   ※ ファイルが存在しない場合は Skill ツールで <your-domain-skill> を呼び出す
+   ※ 関連ドメイン Skill がない場合、このセクションは省略する
    ```
 
    **Standard テンプレート**（`/implement`, `/review` 等 用）:
@@ -94,7 +86,7 @@ description: "Use at the START of every task, before writing any code, running t
    - iterative-retrieval
    - verification-before-completion
    - [ドメイン固有スキル名]
-   例: prisma-expert, architecture-patterns
+   例: <your-domain-skill>
    ```
 
    > Methodology Skills は常に Skill ツールで呼び出す。Phase-Aware ファイル（Read）はドメイン Skill のみに適用する。
@@ -111,9 +103,9 @@ description: "Use at the START of every task, before writing any code, running t
 
 ## フォールバック機構
 
-Phase-Aware ファイル（例: `~/.claude/skills/prisma-expert/design.md`）を Read ツールで読み込もうとしてファイルが存在しない場合:
+Phase-Aware ファイル（例: `~/.claude/skills/<your-domain-skill>/design.md`）を Read ツールで読み込もうとしてファイルが存在しない場合:
 
-1. **SKILL.md にフォールバック**: Skill ツールでスキル名（例: `prisma-expert`）を呼び出し、SKILL.md 全体を読み込む
+1. **SKILL.md にフォールバック**: Skill ツールでスキル名（例: `<your-domain-skill>`）を呼び出し、SKILL.md 全体を読み込む
 2. **警告を出力**: 「[skill-name] の [phase-file].md が未作成です。`/skill-format <skill-name>` で分割してください」
 
 > フォールバックはファイル分割未実施の Skill への後方互換性を確保するための機構。
@@ -128,7 +120,7 @@ START
   │     └─ コマンド名 or 作業内容 → フェーズ検出テーブル → phases[], suffix
   │
   ├─ 2. ドメイン判定
-  │     └─ 対象ファイルパス → ドメイン検出テーブル → domains[]
+  │     └─ 対象ファイルパス → Auto-Discovery でドメインスキル検出 → domains[]
   │
   ├─ 3. スキル照合
   │     ├─ Methodology Skills: phases[] でレジストリ照合 → matched_methodology[]
@@ -138,7 +130,7 @@ START
   │     ├─ Methodology Skills: Skill ツールで呼び出し（常に SKILL.md 全体）
   │     └─ Domain Skills:
   │        ├─ Phase-Aware ファイルあり → Read ツールでファイルパスを指定
-  │        │  例: phase-file="design" → ~/.claude/skills/prisma-expert/design.md
+  │        │  例: phase-file="design" → ~/.claude/skills/<your-domain-skill>/design.md
   │        │  ファイルが存在しない場合はフォールバック機構を適用
   │        └─ Phase-Aware ファイルなし → Skill ツールで呼び出し（SKILL.md 全体）
   │
@@ -162,42 +154,39 @@ START
 
 ## 使用例
 
-### 例 1: `/implement` で Next.js コンポーネント実装時（Standard テンプレート）
+### 例 1: `/implement` でプロジェクトファイル実装時（Standard テンプレート）
 
 1. フェーズ: `implementation` → サフィックス: なし
-2. ドメイン: `src/app/dashboard/page.tsx` → `nextjs-frontend`
+2. ドメイン: 対象ファイルのパスパターンから Auto-Discovery で判定
 3. Methodology Skills: `test-driven-development`, `verification-before-completion`, `iterative-retrieval`
-4. Domain Skills（Auto-Discovery）: `next-best-practices`, `vercel-react-best-practices` 等（サフィックスなし = SKILL.md 全体）
-5. → 5つの Skill を呼び出し
+4. Domain Skills（Auto-Discovery）: `<your-domain-skill>` 等（サフィックスなし = SKILL.md 全体）
+5. → Methodology Skills + 検出された Domain Skills を呼び出し
 
-### 例 2: `/spec` で Prisma 関連の仕様策定時（Phase-Aware テンプレート）
+### 例 2: `/spec` で仕様策定時（Phase-Aware テンプレート）
 
 1. フェーズ: `spec` → Phase-Aware ファイル: `design.md`
-2. ドメイン: proposal.md のキーワードから `prisma-database` を推論
+2. ドメイン: proposal.md の内容と各スキルの description を LLM セマンティック判定で照合
 3. Methodology Skills（REQUIRED SKILLS）: `iterative-retrieval`, `verification-before-completion`
 4. Domain Skills（DOMAIN CONTEXT FILES）:
-   - `~/.claude/skills/prisma-expert/design.md`
-   - `~/.claude/skills/database-migrations/design.md`
-   - `~/.claude/skills/architecture-patterns/design.md`
-5. → コンテキスト効率: ~100行/Skill x 3 = ~300行（従来 ~1,500行 → 80%削減）
+   - `~/.claude/skills/<your-domain-skill>/design.md`
+5. → コンテキスト効率: Phase-Aware ファイルにより、SKILL.md 全体よりも大幅にトークン削減
 
-### 例 3: `/brainstorm` で認証機能のアイデア出し（Phase-Aware テンプレート）
+### 例 3: `/brainstorm` でアイデア出し（Phase-Aware テンプレート）
 
 1. フェーズ: `design` → Phase-Aware ファイル: `constraints.md`
-2. ドメイン: 要件キーワードから `security` を推論
+2. ドメイン: 要件キーワードから Auto-Discovery で関連スキルを推論
 3. Methodology Skills（REQUIRED SKILLS）: `iterative-retrieval`
 4. Domain Skills（DOMAIN CONTEXT FILES）:
-   - `~/.claude/skills/security-patterns/constraints.md`
-   - `~/.claude/skills/architecture-patterns/constraints.md`
-5. → コンテキスト効率: ~25行/Skill x 2 = ~50行（従来 ~900行 → 94%削減）
+   - `~/.claude/skills/<your-domain-skill>/constraints.md`
+5. → コンテキスト効率: constraints.md のみの読み込みにより最小限のコンテキスト消費
 
-### 例 4: Prisma スキーマ変更を含むデバッグ時（Standard テンプレート）
+### 例 4: ドメイン固有ファイルのデバッグ時（Standard テンプレート）
 
 1. フェーズ: `debug` → サフィックス: なし
-2. ドメイン: `prisma/schema.prisma` → `prisma-database`
+2. ドメイン: 対象ファイルのパスパターンから Auto-Discovery で判定
 3. Methodology Skills: `systematic-debugging`, `test-driven-development`, `iterative-retrieval`
-4. Domain Skills（Auto-Discovery）: `prisma-expert` 等（サフィックスなし = SKILL.md 全体）
-5. → 4つの Skill を呼び出し
+4. Domain Skills（Auto-Discovery）: `<your-domain-skill>` 等（サフィックスなし = SKILL.md 全体）
+5. → Methodology Skills + 検出された Domain Skills を呼び出し
 
 ### 例 5: 3つ以上の独立したテスト失敗時
 

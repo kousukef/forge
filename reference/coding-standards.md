@@ -28,8 +28,8 @@ tests/
 
 | Type | Convention | Example |
 |------|------------|---------|
-| ファイル (Component) | PascalCase | `UserProfile.tsx` |
-| ファイル (Utils) | camelCase | `formatDate.ts` |
+| ファイル (Component) | PascalCase | `UserProfile` + 拡張子 |
+| ファイル (Utils) | camelCase | `formatDate` + 拡張子 |
 | ディレクトリ | kebab-case | `user-management/` |
 | 定数 | SCREAMING_SNAKE | `MAX_RETRY_COUNT` |
 | 関数 | camelCase | `getUserById()` |
@@ -58,7 +58,7 @@ tests/
 
 ## Error Handling
 
-### Error Hierarchy
+### Error Hierarchy (例: TypeScript の場合)
 
 ```typescript
 // Base error
@@ -78,7 +78,7 @@ class AuthenticationError extends AppError {}
 class NotFoundError extends AppError {}
 ```
 
-### Error Handling Pattern
+### Error Handling Pattern (例: TypeScript の場合)
 
 ```typescript
 // ❌ Bad: Silent failure
@@ -114,7 +114,7 @@ User Input → API Gateway → Service Layer → Database
   Sanitize   Validation    Validation
 ```
 
-### Validation Pattern
+### Validation Pattern (例: TypeScript + Zod の場合)
 
 ```typescript
 // Schema validation (API layer)

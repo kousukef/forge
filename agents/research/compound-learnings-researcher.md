@@ -36,12 +36,8 @@ skills: [iterative-retrieval]
 - pattern
 
 ### スタック
-- nextjs
-- prisma
-- terraform
-- gcp
-- typescript
 - general
+- プロジェクト固有のスタック（自由記述）
 
 ### 重要度
 - critical: 必ず確認

@@ -48,7 +48,7 @@ Main Agent（オーケストレーション層 / チームリーダー）
 - モード選択（`--teams`/`--agents` 引数に基づく分岐）
 - Teams モード: TeamCreate でチーム作成・タスク割り当て・監視・TeamDelete
 - Sub Agents モード: `Task(implementer)` を直接起動（並列 or 順次）
-- 検証コマンド実行（`npm test`, `tsc --noEmit`, `git diff --stat`）
+- 検証コマンド実行（テスト実行, 静的解析ツール, `git diff --stat`）
 - 検証失敗時: `Task(build-error-resolver)` に委譲（最大3回リトライ）
 - スペック準拠確認: `Task(spec-compliance-reviewer)` に委譲
 - `git diff --stat` で変更概要確認・ユーザーに報告

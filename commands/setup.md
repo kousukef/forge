@@ -134,16 +134,16 @@ REQUIRED SKILLS:
 
 ```
 --- skills.sh ---
-[1] next-best-practices (skills.sh | 5,200 installs)
-    Next.js App Router のベストプラクティス
-[2] vercel-react-best-practices (skills.sh | 3,100 installs)
-    React + Vercel のパターン集
+[1] my-framework-skill (skills.sh | 5,200 installs)
+    フレームワーク固有のベストプラクティス
+[2] my-db-patterns (skills.sh | 3,100 installs)
+    DB アクセスのパターン集
 
 --- GitHub ---
-[3] next-best-practices (awesome-claude-skills | 39K stars)
-    Next.js development patterns
-[4] nextjs-advanced (user/nextjs-skill | 250 stars)
-    Advanced Next.js patterns
+[3] my-framework-skill (awesome-claude-skills | 39K stars)
+    Framework development patterns
+[4] my-advanced-skill (user/my-skill-repo | 250 stars)
+    Advanced development patterns
 ```
 
 #### 件数制限
@@ -331,8 +331,8 @@ npx skills add {owner}/{repo} --skill {name}
 
 | スキル名 | インストール先 | 説明 |
 |---|---|---|
-| next-best-practices | プロジェクト | Next.js App Router のベストプラクティス |
-| prisma-expert | グローバル | Prisma ORM の設計パターンとクエリ最適化 |
+| my-framework-skill | プロジェクト | フレームワーク固有のベストプラクティス |
+| my-db-patterns | グローバル | DB アクセスの設計パターンとクエリ最適化 |
 ```
 
 **重要: SKILL.md の内容をインライン展開しない。** スキル名と description の1行要約のみを含める。これは Claude Code のコンテキスト効率を保護するためである。詳細は各スキルの SKILL.md に委ねる。

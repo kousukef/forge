@@ -123,7 +123,7 @@ $ARGUMENTS から change-name を決定する:
 ```markdown
 ---
 category: [bug-fix | performance | architecture | security | testing | devops | pattern | spec-gap | escalation-failure | review-gap]
-stack: [nextjs | prisma | terraform | gcp | typescript | general]
+stack: [general | プロジェクトの技術スタック名を自由記述]
 severity: [critical | important | minor]
 date: YYYY-MM-DD
 tags: [関連タグをカンマ区切り]
@@ -198,10 +198,10 @@ artifact-targets: [rules | skills | hooks | agents | commands | spec-template | 
 
 | 学びの種別 | 更新対象アーティファクト | 例 |
 |---|---|---|
-| コーディングパターンの発見 | `rules/` または `reference/` | 「Prisma の findMany には必ず take を付ける」 |
+| コーディングパターンの発見 | `rules/` または `reference/` | 「DB クエリには必ず件数上限を付ける」 |
 | 仕様作成時の見落としパターン | spec-writer テンプレート / spec-validator チェックリスト | 「認証 API には必ずトークン期限切れシナリオを含める」 |
 | 実装時の解釈誤りパターン | implementer の必須チェック項目 | 「"適切に処理する" という記述は常にエスカレーション対象」 |
-| レビュー見落としパターン | レビュアーのチェックリスト | 「Server Actions の CSRF 対策は security-sentinel が常にチェック」 |
+| レビュー見落としパターン | レビュアーのチェックリスト | 「特定の観点が対応するレビュアーで常にチェックされるべき」 |
 | ワークフロープロセスの改善 | コマンド定義 (`commands/`) | 「/implement の前に必ず型定義ファイルを先行生成する」 |
 | 繰り返し発生するビルドエラー | build-error-resolver の知識ベース / フック | 「特定の import パターンでエラーが発生する → フックで検出」 |
 | エスカレーション判断の誤り | implementer / spec-compliance-reviewer のエスカレーション条件 | 「DB のカスケード削除は常にエスカレーション」 |
@@ -222,7 +222,7 @@ artifact-targets: [rules | skills | hooks | agents | commands | spec-template | 
 | 分類 | 判断基準 | 提案アクション |
 |---|---|---|
 | **設計で防げた問題** | 仕様の曖昧性・欠落が根本原因。要件定義やデルタスペックの段階で検出可能だった | spec-validator チェック項目の追加を提案 |
-| **実装で防げた問題** | 既知のパターン/アンチパターンの適用で回避可能だった。実装ガイドラインの不足が原因 | ドメイン Skill の更新を提案 |
+| **実装で防げた問題** | 既知のパターン/アンチパターンの適用で回避可能だった。実装ガイドラインの不足が原因 | プロジェクト固有のスキルの更新を提案 |
 | **テストで防げた問題** | テストケースの不足が原因。テスト戦略やカバレッジ基準の改善で検出可能だった | テスト Skill の更新を提案 |
 
 **分類ルール:**
