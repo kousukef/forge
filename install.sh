@@ -98,6 +98,73 @@ if [[ $migrated -gt 0 ]]; then
   echo ""
 fi
 
+# --- 再帰的リンク関数 ---
+# ディレクトリの場合は再帰し、ファイルの場合はシンボリックリンクを作成
+link_recursive() {
+  local src="$1"
+  local dest="$2"
+  local display="$3"
+
+  # ディレクトリの場合は再帰的に処理
+  if [[ -d "$src" && ! -L "$src" ]]; then
+    mkdir -p "$dest"
+    for child in "${src}"/*; do
+      [[ -e "$child" ]] || continue
+      local child_name
+      child_name="$(basename "$child")"
+      link_recursive "$child" "${dest}/${child_name}" "${display}/${child_name}"
+    done
+    return
+  fi
+
+  # シンボリックリンク済み
+  if [[ -L "$dest" ]]; then
+    current_target="$(readlink "$dest")"
+    if [[ "$current_target" == "$src" ]]; then
+      ok "${display}" "リンク済み（変更なし）"
+      skipped=$((skipped + 1))
+      return
+    else
+      # リンク先が異なる
+      info "${display}" "リンク先を更新"
+      ln -sfn "$src" "$dest"
+      ok "${display}" "リンク更新完了"
+      linked=$((linked + 1))
+      return
+    fi
+  fi
+
+  # 通常ファイルまたはディレクトリが存在
+  if [[ -e "$dest" ]]; then
+    warn "${display}" "既存の要素が見つかりました"
+    if confirm "  ${dest} をバックアップしてリンクを作成しますか?"; then
+      if [[ -z "$backup_dir" ]]; then
+        backup_dir="${BACKUP_BASE}/forge-$(date +%Y%m%d-%H%M%S)"
+        mkdir -p "$backup_dir"
+        info "backup" "バックアップ先: ${backup_dir}"
+      fi
+      local backup_parent
+      backup_parent="$(dirname "${backup_dir}/${display}")"
+      mkdir -p "$backup_parent"
+      mv "$dest" "${backup_dir}/${display}"
+      ok "${display}" "バックアップ完了"
+      ln -sfn "$src" "$dest"
+      ok "${display}" "リンク作成完了"
+      linked=$((linked + 1))
+      backed_up=$((backed_up + 1))
+    else
+      warn "${display}" "スキップ（既存の要素を保持）"
+      skipped=$((skipped + 1))
+    fi
+    return
+  fi
+
+  # 存在しない → 新規リンク
+  ln -sfn "$src" "$dest"
+  ok "${display}" "リンク作成完了"
+  linked=$((linked + 1))
+}
+
 # --- 各ディレクトリの個別要素リンク処理 ---
 linked=0
 skipped=0
@@ -111,58 +178,12 @@ for dir in "${FORGE_DIRS[@]}"; do
   # ディレクトリが存在しない場合は作成
   mkdir -p "$dest_dir"
 
-  # ソースディレクトリ内の各要素を処理
+  # ソースディレクトリ内の各要素を処理（再帰的にファイル単位でリンク）
   for item in "${src_dir}"/*; do
     [[ -e "$item" ]] || continue  # glob が展開されない場合のガード
 
     item_name="$(basename "$item")"
-    dest="${dest_dir}/${item_name}"
-    display="${dir}/${item_name}"
-
-    # シンボリックリンク済み
-    if [[ -L "$dest" ]]; then
-      current_target="$(readlink "$dest")"
-      if [[ "$current_target" == "$item" ]]; then
-        ok "${display}" "リンク済み（変更なし）"
-        skipped=$((skipped + 1))
-        continue
-      else
-        # リンク先が異なる
-        info "${display}" "リンク先を更新"
-        ln -sfn "$item" "$dest"
-        ok "${display}" "リンク更新完了"
-        linked=$((linked + 1))
-        continue
-      fi
-    fi
-
-    # 通常ファイルまたはディレクトリが存在
-    if [[ -e "$dest" ]]; then
-      warn "${display}" "既存の要素が見つかりました"
-      if confirm "  ${dest} をバックアップしてリンクを作成しますか?"; then
-        if [[ -z "$backup_dir" ]]; then
-          backup_dir="${BACKUP_BASE}/forge-$(date +%Y%m%d-%H%M%S)"
-          mkdir -p "$backup_dir"
-          info "backup" "バックアップ先: ${backup_dir}"
-        fi
-        mkdir -p "${backup_dir}/${dir}"
-        mv "$dest" "${backup_dir}/${dir}/${item_name}"
-        ok "${display}" "バックアップ完了"
-        ln -sfn "$item" "$dest"
-        ok "${display}" "リンク作成完了"
-        linked=$((linked + 1))
-        backed_up=$((backed_up + 1))
-      else
-        warn "${display}" "スキップ（既存の要素を保持）"
-        skipped=$((skipped + 1))
-      fi
-      continue
-    fi
-
-    # 存在しない → 新規リンク
-    ln -sfn "$item" "$dest"
-    ok "${display}" "リンク作成完了"
-    linked=$((linked + 1))
+    link_recursive "$item" "${dest_dir}/${item_name}" "${dir}/${item_name}"
   done
 done
 
@@ -180,6 +201,42 @@ fi
 
 echo ""
 
+# --- 再帰的検証関数 ---
+verify_recursive() {
+  local src="$1"
+  local dest="$2"
+  local display="$3"
+
+  # ディレクトリの場合は再帰的に検証
+  if [[ -d "$src" && ! -L "$src" ]]; then
+    if [[ ! -d "$dest" ]]; then
+      error "${display}/" "ディレクトリが存在しません"
+      errors=$((errors + 1))
+      return
+    fi
+    for child in "${src}"/*; do
+      [[ -e "$child" ]] || continue
+      local child_name
+      child_name="$(basename "$child")"
+      verify_recursive "$child" "${dest}/${child_name}" "${display}/${child_name}"
+    done
+    return
+  fi
+
+  if [[ -L "$dest" ]]; then
+    actual_target="$(readlink "$dest")"
+    if [[ "$actual_target" == "$src" ]]; then
+      ok "${display}" "-> ${actual_target}"
+    else
+      error "${display}" "リンク先が不正: ${actual_target}"
+      errors=$((errors + 1))
+    fi
+  else
+    error "${display}" "シンボリックリンクではありません"
+    errors=$((errors + 1))
+  fi
+}
+
 # --- 検証 ---
 echo "--- 検証 ---"
 errors=0
@@ -196,21 +253,7 @@ for dir in "${FORGE_DIRS[@]}"; do
   for item in "${src_dir}"/*; do
     [[ -e "$item" ]] || continue
     item_name="$(basename "$item")"
-    dest="${dest_dir}/${item_name}"
-    display="${dir}/${item_name}"
-
-    if [[ -L "$dest" ]]; then
-      actual_target="$(readlink "$dest")"
-      if [[ "$actual_target" == "$item" ]]; then
-        ok "${display}" "-> ${actual_target}"
-      else
-        error "${display}" "リンク先が不正: ${actual_target}"
-        errors=$((errors + 1))
-      fi
-    else
-      error "${display}" "シンボリックリンクではありません"
-      errors=$((errors + 1))
-    fi
+    verify_recursive "$item" "${dest_dir}/${item_name}" "${dir}/${item_name}"
   done
 done
 
