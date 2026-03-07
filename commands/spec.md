@@ -50,7 +50,7 @@ Main Agent（チームリーダー）
 - 不足があれば SendMessage でリサーチャーに追加調査を依頼
 - リサーチ結果の検証（矛盾検出、セキュリティ判断等）を実施
 - エスカレーションが必要な場合は SendMessage で Main Agent に選択肢付きで送信
-- design.md, tasks.md, delta-spec.md を生成
+- design.md, tasks.md, delta-spec.md, traceability.md を生成
 - 完了時にサマリーのみを Main Agent に SendMessage で送信
 
 **Main Agent はサマリーのみ受け取る（コンテキスト保護）。**
@@ -131,11 +131,12 @@ Sub Agents モードでは、Phase 1b の結果を統合する前に以下の観
 
 **Teams モード**: spec-writer が既にチーム内で生成済み。Main Agent は spec-writer からのサマリーを受け取り、Phase 3 に進む。
 
-**Sub Agents モード**: Main Agent がリサーチ結果を統合し、`openspec/changes/<change-name>/` 配下に以下の3ファイルを出力する:
+**Sub Agents モード**: Main Agent がリサーチ結果を統合し、`openspec/changes/<change-name>/` 配下に以下の4ファイルを出力する:
 
 1. `specs/<feature>/delta-spec.md` -- デルタ要件（ADDED/MODIFIED/REMOVED + シナリオ種別テンプレート）
 2. `design.md` -- リサーチサマリー + 技術設計
 3. `tasks.md` -- タスクリスト
+4. `traceability.md` -- トレーサビリティマトリクス（US/DD/T/TP の双方向マッピング）
 
 ### Phase 3: 仕様検証（spec-validator）
 
@@ -147,7 +148,7 @@ spec-validator を起動し、delta-spec の網羅性を敵対的に検証する
 
 spec-validator は以下を検証する:
 - EARS + Google Design Review 品質基準（Correctness、テスト可能性、振る舞い中心、Clarity、Completeness、Consistency）
-- 9 つの検証項目（エラーシナリオ確認、境界値検出、非機能要件確認、シナリオ間矛盾検出、既存スペック整合性、未指定シナリオ列挙、タスク粒度検証、STRIDE 簡易チェック、Last Responsible Moment）
+- 10 の検証項目（エラーシナリオ確認、境界値検出、非機能要件確認、シナリオ間矛盾検出、既存スペック整合性、未指定シナリオ列挙、タスク粒度検証、STRIDE 簡易チェック、Last Responsible Moment、トレーサビリティ網羅性チェック）
 
 ### Phase 4: 修正ループ
 
@@ -166,7 +167,7 @@ Phase 3 の検証結果に基づき、仕様の修正を行う。
 検証済みの仕様 + Spec Validation Report をユーザーに提示し、**ユーザーが明示的に承認するまで実装に進まない**。
 
 提示内容:
-1. 生成されたファイルの場所（delta-spec.md, design.md, tasks.md）
+1. 生成されたファイルの場所（delta-spec.md, design.md, tasks.md, traceability.md）
 2. Spec Validation Report のカバレッジサマリー
 3. 修正ループで解消された項目の概要
 4. 残存する注意事項（もしあれば）

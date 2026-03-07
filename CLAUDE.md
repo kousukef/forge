@@ -33,6 +33,7 @@ openspec/
     │   ├── proposal.md     # /brainstorm で生成
     │   ├── design.md       # /spec で生成
     │   ├── tasks.md        # /spec で生成
+    │   ├── traceability.md # /spec で生成、/implement で更新
     │   ├── specs/          # デルタスペック（/spec で生成）
     │   ├── interpretations/ # 仕様解釈ログ（/implement で生成）コミット対象外、/compound 後に削除
     │   └── reviews/         # レビュー結果（/review で生成）コミット対象外、/compound 後に削除
