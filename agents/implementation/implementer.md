@@ -37,8 +37,9 @@ skills: [test-driven-development, iterative-retrieval, verification-before-compl
 6. RED → GREEN → REFACTOR のサイクルを守る
 7. `iterative-retrieval`スキルでコンテキストを段階的に取得
 8. 1タスクの実装が完了したら、テストがパスすることを確認してから次に進む
-9. **コミットしない**: 実装完了後、変更はワーキングツリーに残す。Git コミットは実行しない。コミットはユーザーの明示的な指示でのみ行う
-10. **git add 禁止対象**: `openspec/changes/*/interpretations/` および `openspec/changes/*/reviews/` 配下のファイルは `git add` の対象に含めない
+9. **traceability.md 更新（best-effort）**: タスク完了後、`openspec/changes/<name>/traceability.md` が存在する場合、Backward Traceability テーブルに実装ファイルパスを追記し、Forward Traceability テーブルの該当 T-xxx 行の impl/test 列を更新する。traceability.md が存在しない場合はスキップする。この更新は best-effort であり、更新失敗時もタスク完了をブロックしない
+10. **コミットしない**: 実装完了後、変更はワーキングツリーに残す。Git コミットは実行しない。コミットはユーザーの明示的な指示でのみ行う
+11. **git add 禁止対象**: `openspec/changes/*/interpretations/` および `openspec/changes/*/reviews/` 配下のファイルは `git add` の対象に含めない
 
 ## Spec Interpretation Log
 
@@ -146,5 +147,6 @@ TDD 開始前に、以下のフォーマットで Spec Interpretation Log を `o
 - [ ] 静的解析がパスしている（プロジェクトの静的解析ツールで確認）
 - [ ] Spec Interpretation Log の Phase A（仕様解釈）が記述済みである
 - [ ] Spec Interpretation Log の Phase B（変更ファイル一覧 + 実装の振り返り）が追記済みである
+- [ ] traceability.md の Backward Traceability テーブルに実装ファイルパスを追記済みである（traceability.md が存在する場合のみ。best-effort -- 更新失敗時もブロックしない）
 - [ ] 変更はワーキングツリーに残っている（コミットしていない）
 

@@ -115,6 +115,9 @@ $ARGUMENTS から change-name を決定する:
    - MODIFIED: 同名要件を置換
    - REMOVED: 該当要件を削除
    - マージ後は ADDED/MODIFIED/REMOVED 接頭辞を除去し累積形式にする
+   - **traceability.md のマージ**: `openspec/changes/<change-name>/traceability.md` が存在する場合、`openspec/specs/<feature>/traceability.md` にマージする（feature 名は delta-spec.md の配置ディレクトリ名と一致させる）。既存ファイルがある場合は Forward / Backward Traceability テーブルに行を追記する。ファイルがない場合は新規作成する。traceability.md が存在しない場合はスキップする
+     - **ID 衝突回避（リナンバリング）**: 累積トレーサビリティに同名の US-xxx が既に存在する場合、新しい変更の ID を連番継続する形でリナンバリングする。リナンバリング時は Forward Traceability テーブルと Backward Traceability テーブルの両方で、リナンバリング対象の全 ID（US-xxx, DD-xxx, T-xxx, TP-xxx）の参照を同時に更新する
+     - **Coverage Summary の再集計**: マージ後、累積トレーサビリティの Coverage Summary を全行から再集計する
 
 7. **変更アーカイブ**: `openspec/changes/<change-name>/` → `openspec/changes/archive/YYYY-MM-DD-<change-name>/` に移動
 
