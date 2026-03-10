@@ -81,19 +81,18 @@ for dir in "${FORGE_DIRS[@]}"; do
   fi
 done
 
-# --- 各ディレクトリ内の個別要素の処理 ---
-removed=0
-skipped=0
-
-for dir in "${FORGE_DIRS[@]}"; do
-  dest_dir="${CLAUDE_HOME}/${dir}"
-  [[ -d "$dest_dir" ]] || continue
+# --- 再帰的削除関数 ---
+# ディレクトリの場合は再帰し、Forge へのシンボリックリンクのみ削除
+unlink_recursive() {
+  local dest_dir="$1"
+  local display_prefix="$2"
 
   for item in "${dest_dir}"/*; do
     [[ -e "$item" || -L "$item" ]] || continue
 
+    local item_name
     item_name="$(basename "$item")"
-    display="${dir}/${item_name}"
+    local display="${display_prefix}/${item_name}"
 
     if [[ -L "$item" ]]; then
       target="$(readlink "$item")"
@@ -106,11 +105,30 @@ for dir in "${FORGE_DIRS[@]}"; do
         info "${display}" "Forge 以外のリンク。スキップ"
         skipped=$((skipped + 1))
       fi
+    elif [[ -d "$item" ]]; then
+      # ディレクトリの場合は再帰的に処理
+      unlink_recursive "$item" "$display"
+      # 空ディレクトリになった場合は削除
+      if [[ -d "$item" ]] && [[ -z "$(ls -A "$item")" ]]; then
+        rmdir "$item"
+        ok "${display}/" "空ディレクトリを削除"
+      fi
     else
       info "${display}" "ユーザー資産。スキップ"
       skipped=$((skipped + 1))
     fi
   done
+}
+
+# --- 各ディレクトリ内の個別要素の処理 ---
+removed=0
+skipped=0
+
+for dir in "${FORGE_DIRS[@]}"; do
+  dest_dir="${CLAUDE_HOME}/${dir}"
+  [[ -d "$dest_dir" ]] || continue
+
+  unlink_recursive "$dest_dir" "$dir"
 done
 
 echo ""
