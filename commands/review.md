@@ -30,21 +30,33 @@ $ARGUMENTS から change-name を決定する:
 
 LLM レビュアー起動前に、機械的に検出可能な問題を先行チェックする。
 
-1. **L1: 型チェック**
+1. **L0: ドキュメント同期チェック**
+   - プロジェクトの CLAUDE.md を Read し、`## Document Sync Rules` セクションの存在を確認
+   - セクションが存在しない場合: `L0 (doc-sync): skipped (no rules found)` を記録しスキップ
+   - セクションが存在する場合:
+     1. ルールの自然言語記述を取得する
+     2. `git diff --stat` の変更ファイル一覧とルールのマッピングを照合する
+     3. マッピングに該当する変更がある場合: 対応するドキュメントが `git diff --stat` に含まれているか確認
+        - 含まれている: `L0 (doc-sync): PASS` を記録
+        - 含まれていない: `L0 (doc-sync): WARNING -- 以下のドキュメントが未更新: [ファイル一覧]` を記録
+     4. マッピングに該当する変更がない場合: `L0 (doc-sync): PASS (no matching files)` を記録
+   - L0 は WARNING のみ出力しブロッキングしない。doc-sync-reviewer が内容を精査して最終判断する
+
+2. **L1: 型チェック**
    - プロジェクトの型チェッカーを実行（存在する場合）
    - 例: package.json の scripts、設定ファイル（tsconfig.json 等）から利用可能な型チェッカーを検出
    - 型チェッカーが存在しない場合はスキップする
    - 結果（エラー一覧またはエラーなし）を記録
 
-2. **L2: linter 静的解析**
+3. **L2: linter 静的解析**
    - プロジェクトの linter を実行（存在する場合）
    - 例: package.json の scripts、設定ファイル（.eslintrc、biome.json 等）から利用可能な linter を検出
    - linter が存在しない場合はスキップする
    - 結果（エラー一覧またはエラーなし）を記録
 
-3. **結果の記録**
-   - L1/L2 の結果を Step 1 の REVIEW CONTEXT に注入するために保持する
-   - L1/L2 でエラーが検出されてもレビューフローは続行する（エラー修正は `/implement` の責務）
+4. **結果の記録**
+   - L0/L1/L2 の結果を Step 1 の REVIEW CONTEXT に注入するために保持する
+   - L0/L1/L2 でエラーや WARNING が検出されてもレビューフローは続行する（エラー修正は `/implement` の責務）
 
 ### Step 1: 仕様コンテキストの準備
 
@@ -60,6 +72,7 @@ REVIEW CONTEXT:
 - design.md: openspec/changes/<change-name>/design.md
 - 変更ファイル: [git diff --stat の出力]
 - リスクレベル: [Step 2a で判定した HIGH / MEDIUM / LOW]
+- L0 (doc-sync) 結果: [Step 0 の L0 結果。スキップした場合は「ドキュメント同期ルール未検出のためスキップ」]
 - L1 (型チェック) 結果: [Step 0 の L1 結果。スキップした場合は「型チェッカー未検出のためスキップ」]
 - L2 (linter) 結果: [Step 0 の L2 結果。スキップした場合は「linter 未検出のためスキップ」]
 

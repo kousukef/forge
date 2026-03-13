@@ -41,6 +41,27 @@ skills: [test-driven-development, iterative-retrieval, verification-before-compl
 10. **コミットしない**: 実装完了後、変更はワーキングツリーに残す。Git コミットは実行しない。コミットはユーザーの明示的な指示でのみ行う
 11. **git add 禁止対象**: `openspec/changes/*/interpretations/` および `openspec/changes/*/reviews/` 配下のファイルは `git add` の対象に含めない
 
+### doc-sync タスク
+
+プロンプトに「doc-sync タスク」と明記されている場合、以下の振る舞いに従う。通常の実装タスク（上記 1-11）の振る舞いは適用しない。
+
+**適用除外:**
+- TDD サイクル（RED-GREEN-REFACTOR）は不要
+- Spec Interpretation Log は不要
+- traceability.md 更新は不要
+
+**処理手順:**
+
+1. プロンプトから提供された CLAUDE.md のドキュメント同期ルールを確認する
+2. `git diff --stat` で変更ファイル一覧を確認する
+3. ルールに基づいて更新対象のドキュメントを特定する
+4. 対象ドキュメントを Read する
+   - 対象ドキュメントが存在しない場合: 「対象ドキュメントが見つかりません: [パス]」とログ出力し、タスクを完了する（エラーとしない）
+5. 実装変更の内容をドキュメントに反映し、Edit で更新する
+6. 更新したドキュメントはワーキングツリーに残す（コミットしない）
+
+**エラーハンドリング:** ドキュメントの Read または Edit でエラーが発生した場合、エラー内容をログ出力し、該当ドキュメントの更新をスキップする。成功した他のドキュメント更新はワーキングツリーに保持する。
+
 ## Spec Interpretation Log
 
 TDD 開始前に、以下のフォーマットで Spec Interpretation Log を `openspec/changes/<name>/interpretations/<task>.md` に出力する。これは**必須**であり、スキップしてはならない。
