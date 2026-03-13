@@ -106,3 +106,12 @@ openspec/
 学びを種別に応じて適切なアーティファクトに自動ルーティング。詳細は `/compound` コマンド定義を参照。
 
 ---
+
+## Document Sync Rules
+
+- `commands/` 配下のファイルを変更したら `CLAUDE.md` の Forge ワークフロー セクションを確認・更新する
+- `agents/` 配下のファイルを変更したら `CLAUDE.md` の Available Agents セクションを確認・更新する
+- `skills/` 配下のファイルを変更したら `CLAUDE.md` の Available Skills セクションを確認・更新する
+- `rules/` または `reference/` 配下のファイルを変更したら `CLAUDE.md` の Rules セクションを確認・更新する
+- `hooks/` 配下のファイルを変更したら `CLAUDE.md` の Hook 自動ガードレール セクションを確認・更新する
+- `install.sh` またはプロジェクト構成ファイルを変更したら `README.md` を確認・更新する
