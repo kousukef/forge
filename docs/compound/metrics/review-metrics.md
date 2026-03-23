@@ -29,3 +29,13 @@
 | ノイズ候補 | 1件（P3と同一） |
 | 却下率 | doc-sync-reviewer: 0% |
 | カバレッジ率 | 38%（Happy Path 8/8 Covered、Error/Boundary/NFR は部分的 -- レビュアー1名のみ起動のため） |
+
+## 2026-03-23 add-pr-review-learning-loop
+| メトリクス | 値 |
+|---|---|
+| P1 | 0件 |
+| P2 | 0件 |
+| P3 | 0件 |
+| ノイズ候補 | 1件（README.md コマンド概要更新 -- 対応済み） |
+| 却下率 | doc-sync-reviewer: 0% |
+| カバレッジ率 | 0%（doc-sync-reviewer のみ起動。仕様準拠は /implement の spec-compliance-reviewer で検証済み） |
