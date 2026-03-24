@@ -1,6 +1,6 @@
 # Core Essentials
 
-常時読み込みされる最小限のルール。詳細は `reference/` を必要に応じて参照。
+常時読み込みされる最小限のルール。詳細ルールは `.claude/rules/` に配置され、Claude Code が自動ロードする。
 
 ---
 
@@ -59,7 +59,7 @@ Main Agent はオーケストレーション専任。以下を厳守:
 | SKILL.md の Read | スキル名のみ決定、Claude Code が自動解決 |
 | `git diff`（内容表示） | `git diff --stat` のみ許可 |
 
-詳細: `reference/context-isolation.md`
+詳細: `.claude/rules/context-isolation.md`（自動ロード）
 
 ---
 
@@ -86,6 +86,6 @@ Main Agent はオーケストレーション専任。以下を厳守:
 
 ---
 
-## オンデマンドルール参照先
+## ルール自動ロード
 
-作業対象に応じて `reference/` から必要なファイルを読み込むこと。参照テーブルは CLAUDE.md の Rules セクションを参照。
+詳細ルールは `.claude/rules/` に配置されており、Claude Code が自動ロードする。`paths` なしのルールは毎セッション自動ロード、`paths` 付きのルールは対象ファイル操作時にロードされる。配置済みルールの一覧は CLAUDE.md の Rules セクションを参照。
