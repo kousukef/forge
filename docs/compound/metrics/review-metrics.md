@@ -39,3 +39,13 @@
 | ノイズ候補 | 1件（README.md コマンド概要更新 -- 対応済み） |
 | 却下率 | doc-sync-reviewer: 0% |
 | カバレッジ率 | 0%（doc-sync-reviewer のみ起動。仕様準拠は /implement の spec-compliance-reviewer で検証済み） |
+
+## 2026-03-24 add-pre-push-verification-to-handle-pr-review
+| メトリクス | 値 |
+|---|---|
+| P1 | 0件 |
+| P2 | 0件 |
+| P3 | 0件 |
+| ノイズ候補 | 0件 |
+| 却下率 | doc-sync-reviewer: 0% |
+| カバレッジ率 | 100%（全5要件 REQ-001〜REQ-005 の全シナリオ Covered） |
