@@ -47,14 +47,19 @@ openspec/
 
 常時読み込み: `rules/core-essentials.md`（エスカレーション・セキュリティ・Skill 1%ルール・Context Isolation・Git・コード品質）
 
-詳細ルールは `reference/` にオンデマンド配置。作業対象に応じて必要なファイルを読み込む:
+詳細ルールは `.claude/rules/` に配置し、Claude Code の自動ロード機能で読み込む:
 
-| Reference File | タイミング |
-|---|---|
-| `reference/coding-standards.md` | コーディング規約確認 |
-| `reference/core-rules.md` | フェーズ管理・検証ゲート |
-| `reference/workflow-rules.md` | セッション管理 |
-| `reference/common/testing.md` | テスト作成・TDD |
+| Rule File | 内容 | ロード条件 |
+|---|---|---|
+| `.claude/rules/core-rules.md` | フェーズ管理・検証ゲート | 毎セッション自動ロード（`paths` なし） |
+| `.claude/rules/workflow-rules.md` | セッション管理 | 毎セッション自動ロード（`paths` なし） |
+| `.claude/rules/context-isolation.md` | Context Isolation 詳細 | 毎セッション自動ロード（`paths` なし） |
+| `.claude/rules/coding-standards.md` | コーディング規約 | 毎セッション自動ロード（`paths` なし） |
+| `.claude/rules/testing.md` | テスト作成・TDD | 毎セッション自動ロード（`paths` なし） |
+
+> **Note**: Forge 本体にはソースコードディレクトリが存在しないため、全ルールを `paths` なし（毎セッション自動ロード）で配置している。ソースコードのあるプロジェクトでは `paths` フロントマターを追加して対象ファイル操作時のみロードするよう調整できる（例: `paths: ["src/**/*.{ts,tsx}"]`）。
+
+`reference/` ディレクトリは長文リファレンスや補足資料の配置先として引き続き利用可能。
 
 ---
 
@@ -84,7 +89,8 @@ openspec/
 > **拡張方法**:
 > - ドメインスキルは `/setup` コマンドで検索・インストール、または `<project>/.claude/skills/` に手動追加
 > - レビューエージェントは `agents/review/` に追加で自動認識
-> - リファレンスは `reference/` に追加
+> - ルールは `.claude/rules/` に追加（`paths` フロントマターで適用条件を制御可能）
+> - 補足資料・長文リファレンスは `reference/` に追加
 
 ---
 
@@ -101,9 +107,26 @@ openspec/
 
 ---
 
-## Compound Learning
+## Experiential Learning
 
-学びを種別に応じて適切なアーティファクトに自動ルーティング。詳細は `/compound` コマンド定義を参照。
+全プロジェクト・全対話の経験ログを `~/.claude/docs/experiential/` に一元蓄積し、結晶化プロセスを通じて rules/skills/hooks に昇格させる。
+
+### ディレクトリ構造
+
+```
+~/.claude/docs/experiential/
+  ├── logs/           # タグ付き経験ログ（/compound 出力 + Nurture ログ）
+  ├── patterns/       # /crystallize で抽出されたパターン候補
+  ├── metrics/        # レビューメトリクス蓄積
+  └── crystallization-log.md  # 結晶化の実行履歴
+```
+
+### コマンド体系
+
+| コマンド | 役割 | 詳細 |
+|---|---|---|
+| `/compound` | 変更単位の学び抽出 + 結晶化チェック | 学びを `logs/` に蓄積。未結晶化エントリが閾値超過時に `/crystallize` を推奨 |
+| `/crystallize` | プロジェクト横断パターン抽出 + 昇格 | 蓄積された経験からパターンを抽出し、人間レビューを経て rules/skills/hooks に昇格 |
 
 ---
 
