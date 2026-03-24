@@ -59,7 +59,13 @@ $ARGUMENTS から change-name を決定する:
    - 発見したベストプラクティス
    - 改善できるプロセス
 
-3. `docs/compound/YYYY-MM-DD-<topic>.md` に出力（複利ドキュメント形式に従う）
+3. `~/.claude/docs/experiential/logs/YYYY-MM-DD-<project>-<topic>.md` に出力（複利ドキュメント形式に従う）
+   - `<project>` はカレントプロジェクト名。特定できない場合は `unknown` を使用する
+   - **ファイル名生成ルール**:
+     - プロジェクト名のファイルシステム非安全文字（`/`, `\`, `:`, `*`, `?`, `"`, `<`, `>`, `|`, `.` 等）はハイフンに置換する
+     - `<topic>` が 50 文字を超える場合は 50 文字に切り詰める
+   - **ディレクトリ不在時**: `~/.claude/docs/experiential/logs/` が存在しない場合は再帰的に作成する
+   - **フォールバック**: ディレクトリ作成に失敗した場合（権限エラー等）は `docs/compound/YYYY-MM-DD-<topic>.md`（現行パス）にフォールバックし、ユーザーに警告を表示する
 
 3.5. **レビューメトリクス蓄積**: `reviews/review-summary.md` が存在する場合のみ実行する
    - `openspec/changes/<change-name>/reviews/review-summary.md` の存在を確認する
@@ -68,9 +74,11 @@ $ARGUMENTS から change-name を決定する:
      - **指摘件数**: P1（重大）/ P2（重要）/ P3（軽微）/ ノイズ候補の件数
      - **却下率**: レビュアー別の指摘却下率（却下数 / 総指摘数）
      - **カバレッジ率**: デルタスペックの要件に対するレビューカバレッジ
-   - 蓄積先: `docs/compound/metrics/review-metrics.md`
-     - ファイルが存在しない場合はディレクトリごと新規作成する
+   - 蓄積先: `~/.claude/docs/experiential/metrics/review-metrics.md`
+     - ディレクトリが存在しない場合は再帰的に作成する
+     - ファイルが存在しない場合は新規作成する
      - 既存ファイルがある場合は末尾に追記する
+     - **書き込み失敗時**: メトリクス記録をスキップし、警告を表示して `/compound` を続行する（メトリクス記録の失敗は `/compound` の完了をブロックしない）
    - 蓄積フォーマット:
      ```
      ## YYYY-MM-DD <change-name>
@@ -90,6 +98,20 @@ $ARGUMENTS から change-name を決定する:
    - 繰り返し発生する学びは過去記録と照合し、2回以上なら更新を提案する
    - 更新提案はアーティファクト種別ごとにグループ化してユーザーに提示する
    - ユーザー承認後に適用する
+
+4.3. **結晶化チェック**: 以下を順に実行する
+
+   1. `~/.claude/docs/experiential/logs/` 内の全 `.md` ファイルから `crystallized: false` を Grep し、未結晶化エントリ数を集計する
+      - ディレクトリが存在しない場合はこのステップ全体をスキップする（エラーを出さない）
+
+   2. 件数が閾値（デフォルト 15 件）を**超過**する場合（> 15。15 件丁度は含まない）、ユーザーに以下の通知を表示する:
+      「未結晶化の経験ログが N 件蓄積されています。`/crystallize` の実行を推奨します。」
+
+   3. 現在の `/compound` で抽出した学びに `[CORRECTION]` tag criteria（REQ-005 で定義: ユーザーが Claude の提案を修正・却下し、理由を説明した場合）に該当する content がある場合、即座に以下への昇格を提案する:
+      - a. ドメインスキルの `constraints.md` への追記（禁止事項として）
+      - b. `hooks/` への新規フック追加（自動検出可能な場合）
+      - c. `rules/` への原則追加（汎用的な場合）
+      - 提案はステップ 4 の Learning Router の提案とマージしてユーザーに一括提示する
 
 4.5. **Skill 派生ファイルの同期**: ステップ4 で SKILL.md が更新された場合のみ実行する
    - ステップ4 の Learning Router でドメイン Skill の SKILL.md が更新されなかった場合（更新提案なし or ユーザー却下）はこのステップをスキップする
@@ -125,12 +147,18 @@ $ARGUMENTS から change-name を決定する:
 
 ```markdown
 ---
+id: exp-NNNN
+type: compound
+source: forge-workflow
+project: <project-name>
+change: <change-name>
 category: [bug-fix | performance | architecture | security | testing | devops | pattern | spec-gap | escalation-failure | review-gap]
 stack: [general | プロジェクトの技術スタック名を自由記述]
 severity: [critical | important | minor]
 date: YYYY-MM-DD
 tags: [関連タグをカンマ区切り]
 artifact-targets: [rules | skills | hooks | agents | commands | spec-template | reference]
+crystallized: false
 ---
 
 # [学びのタイトル]
@@ -167,6 +195,17 @@ artifact-targets: [rules | skills | hooks | agents | commands | spec-template | 
 ### 仕様テンプレート更新
 - [ ] [具体的な更新内容と対象ファイル]
 ```
+
+### フロントマター追加フィールド説明
+
+| フィールド | 説明 |
+|---|---|
+| `id` | `exp-NNNN` 形式。NNNN はゼロ埋め連番でファイル内一意。クロスファイル一意性は `id` + `project` + ファイル名日付の組み合わせで担保する |
+| `type` | `compound`（Forge ワークフロー由来） |
+| `source` | `forge-workflow` |
+| `project` | プロジェクト名。特定できない場合は `unknown` |
+| `change` | 変更名（`<change-name>`） |
+| `crystallized` | `false`（初期値）。`/crystallize` で処理後に `true` に更新される |
 
 ## 累積スペック形式
 
@@ -214,9 +253,9 @@ artifact-targets: [rules | skills | hooks | agents | commands | spec-template | 
 | 閾値 | アクション |
 |---|---|
 | **重大**（100ドル超相当） | ルール / スキル / フック / エージェント定義 / コマンド / 仕様テンプレートの更新を強く提案 |
-| **3回ルール**（Three Strikes） | 同一種別の学びが `docs/compound/` に3回蓄積した場合、**必ず**プロセス改善を提案する。問題の根本原因を分析し、前段フェーズでの防止策を含める |
-| **中程度**（繰り返し発生） | 同一種別の学びが `docs/compound/` に2回以上蓄積した場合、更新を提案 |
-| **軽微**（初回発生） | `docs/compound/` に記録のみ。次回同一種別が発生した場合に中程度に昇格 |
+| **3回ルール**（Three Strikes） | 同一種別の学びが `~/.claude/docs/experiential/logs/` に3回蓄積した場合、**必ず**プロセス改善を提案する。問題の根本原因を分析し、前段フェーズでの防止策を含める |
+| **中程度**（繰り返し発生） | 同一種別の学びが `~/.claude/docs/experiential/logs/` に2回以上蓄積した場合、更新を提案 |
+| **軽微**（初回発生） | `~/.claude/docs/experiential/logs/` に記録のみ。次回同一種別が発生した場合に中程度に昇格 |
 
 ### Shift-Left フィードバック分類
 
@@ -232,6 +271,44 @@ artifact-targets: [rules | skills | hooks | agents | commands | spec-template | 
 - 問題が複数のカテゴリに該当する場合、最も早いフェーズ（最も Shift-Left 方向）のカテゴリを優先する
 - 分類は Learning Router のルーティング手順の中で、各学びの `artifact-targets` 判定と並行して実行する
 
+### 仮説検証（Hypothesis Verification）
+
+Learning Router が学びを処理する際に、rules/skills/hooks に存在する仮説タグ付き知識との関連を確認し、confidence スコアを更新する。
+
+#### 仮説タグの形式
+
+```
+<!-- hypothesis: confidence=0.7 source=crystallize-YYYY-MM-DD evidence=N -->
+```
+
+#### 検証手順
+
+1. 今回の `/compound` で抽出した学びに対して、rules/skills/hooks 内の仮説タグ付き知識を Grep で検索する
+2. 関連する仮説タグ付き知識が見つかった場合、学びの内容と仮説の内容を比較し、確認（承認）か矛盾（修正）かを判定する
+3. 判定結果に基づき、仮説メタデータを更新する:
+   - **確認（承認）**: evidence +1, confidence +0.05
+   - **矛盾（修正）**: evidence +1, confidence -0.15
+   - confidence は 0.0 - 1.0 の範囲にクランプする
+4. ライフサイクル遷移を適用する:
+   - confidence >= 0.9 → 仮説タグを削除する（確立された知識として扱う）
+   - confidence <= 0.4 → 次回 `/crystallize` で再検討候補に含めるマーク（タグに `review-needed` を追記）
+5. 更新した仮説タグをファイルに書き戻す
+
+#### べき等性の保証
+
+同じ `/compound` 出力を 2 回処理しても二重カウントしないこと（REQ-007 NFR）。べき等性は以下で担保する:
+- 仮説タグ更新時に `last-compound: <change-name>-<date>` を記録する
+- 同一の `change-name` + `date` の組み合わせで既に更新済みの場合はスキップする
+
+更新後のタグ形式:
+```
+<!-- hypothesis: confidence=0.75 source=crystallize-YYYY-MM-DD evidence=4 last-compound=auth-refactor-2026-03-24 -->
+```
+
+#### エラーハンドリング
+
+- 仮説タグのフォーマットが不正（手動編集により破損）の場合、不正なタグを無視し、ユーザーにタグの修正を促すメッセージを表示する。Learning Router の他の処理はブロックしない
+
 ### ルーティング手順
 
 1. 学びを抽出し、分類テーブルに基づいて種別を判定する
@@ -239,8 +316,9 @@ artifact-targets: [rules | skills | hooks | agents | commands | spec-template | 
 3. /review や /test で発見された問題については、Shift-Left フィードバック分類を実行し、防止策の提案先を判定する
 4. 閾値ルールに基づき更新提案の要否を判定する:
    - 重大: 即座に具体的な更新差分を生成し提案
-   - 3回ルール: `docs/compound/` 内で同一種別の過去記録を Grep し、3回蓄積していれば**必ず**プロセス改善を提案する。根本原因を分析し、前段フェーズでの防止策を含める
-   - 中程度: `docs/compound/` 内で同一種別の過去記録を Grep し、2回以上あれば更新差分を生成し提案
+   - 3回ルール: `~/.claude/docs/experiential/logs/` 内で同一種別の過去記録を Grep し、3回蓄積していれば**必ず**プロセス改善を提案する。根本原因を分析し、前段フェーズでの防止策を含める
+   - 中程度: `~/.claude/docs/experiential/logs/` 内で同一種別の過去記録を Grep し、2回以上あれば更新差分を生成し提案
    - 軽微: 記録のみ
-5. 更新提案はアーティファクト種別ごとにグループ化してユーザーに提示する
-6. ユーザー承認後に適用する
+5. 仮説検証: 上記「仮説検証（Hypothesis Verification）」セクションの手順に従い、仮説タグ付き知識の confidence を更新する
+6. 更新提案はアーティファクト種別ごとにグループ化してユーザーに提示する（仮説検証による更新もこの提案に含める）
+7. ユーザー承認後に適用する
