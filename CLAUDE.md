@@ -83,6 +83,7 @@ openspec/
 
 > **拡張方法**:
 > - ドメインスキルは `/setup` コマンドで検索・インストール、または `<project>/.claude/skills/` に手動追加
+> - プロジェクト固有ルールは `/rules` コマンドで対話的に生成、または `.claude/rules/` に手動追加
 > - レビューエージェントは `agents/review/` に追加で自動認識
 > - リファレンスは `reference/` に追加
 
