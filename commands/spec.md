@@ -35,7 +35,7 @@ brainstorm → spec のエントリー基準を確認する（`reference/core-ru
 
 ### Phase 1a: リサーチ＆スペックチーム（Teams モード）
 
-TeamCreate でリサーチ＆スペックチームを作成し、以下の5 teammate を起動する:
+TeamCreate でリサーチ＆スペックチームを作成し、以下の6 teammate を起動する:
 
 ```
 Main Agent（チームリーダー）
@@ -46,11 +46,13 @@ Main Agent（チームリーダー）
       +-- stack-docs-researcher: Context7 MCP経由で公式ドキュメント調査
       +-- web-researcher: Web Searchで最新ベストプラクティス・落とし穴調査
       +-- compound-learnings-researcher: docs/compound/ から過去の学び抽出
+      +-- domain-analyzer: docs/domain/ + docs/inbox/ からドメイン制約抽出
       +-- spec-writer: リサーチ結果統合 -> design.md / tasks.md / delta-spec 生成
 ```
 
 **spec-writer の役割:**
 - リサーチャー全員のタスク完了後、結果を読み込み・統合
+- domain-analyzer の結果（Error/Boundary/NFR シナリオ候補）を delta-spec のシナリオ生成に反映する。domain-analyzer が結果を返さない場合は残りのリサーチャー結果のみで生成する（ブロッキングしない）
 - 不足があれば SendMessage でリサーチャーに追加調査を依頼
 - リサーチ結果の検証（矛盾検出、セキュリティ判断等）を実施
 - エスカレーションが必要な場合は SendMessage で Main Agent に選択肢付きで送信
@@ -68,7 +70,7 @@ Main Agent（チームリーダー）
 
 ### Phase 1b: リサーチ（Sub Agents モード）
 
-以下の4つのリサーチエージェントを**並列で**起動する:
+以下の5つのリサーチエージェントを**並列で**起動する:
 
 1. **stack-docs-researcher** -- Context7 MCP経由でプロジェクトの技術スタックに関連する公式ドキュメントからベストプラクティスを取得
 2. **web-researcher** -- Web Searchを使って以下を検索:
@@ -82,6 +84,11 @@ Main Agent（チームリーダー）
    - 依存関係を把握
    - `openspec/specs/` の既存スペックを読み込み、関連する要件とシナリオを抽出
 4. **compound-learnings-researcher** -- `docs/compound/` 配下の過去の学びを検索し、関連する教訓を抽出
+5. **domain-analyzer** -- `docs/domain/` + `docs/inbox/` からドメイン知識を分析し、proposal.md の変更に関連するドメイン制約を抽出:
+   - Error Scenarios 候補（ビジネスルール違反等）
+   - Boundary Scenarios 候補（ドメインモデル制約等）
+   - NFR 候補（技術的制約・SLA等）
+   - `docs/domain/` が存在しない場合はスキップし、残りのリサーチャー結果のみで続行する（ブロッキングしない）
 
 ### Phase 1.7: ドメイン判定
 
@@ -137,7 +144,7 @@ Sub Agents モードでは、Phase 1b の結果を統合する前に以下の観
 
 **Sub Agents モード**: Main Agent がリサーチ結果を統合し、`openspec/changes/<change-name>/` 配下に以下の4ファイルを出力する:
 
-1. `specs/<feature>/delta-spec.md` -- デルタ要件（ADDED/MODIFIED/REMOVED + シナリオ種別テンプレート）
+1. `specs/<feature>/delta-spec.md` -- デルタ要件（ADDED/MODIFIED/REMOVED + シナリオ種別テンプレート）。domain-analyzer の結果（Error/Boundary/NFR シナリオ候補）がある場合は各要件のシナリオに反映する。domain-analyzer が結果を返さなかった場合は残り4リサーチャーの結果のみで生成する
 2. `design.md` -- リサーチサマリー + 技術設計
 3. `tasks.md` -- タスクリスト
 4. `traceability.md` -- トレーサビリティマトリクス（US/DD/T/TP の双方向マッピング）
