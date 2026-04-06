@@ -35,6 +35,7 @@ openspec/
     │   ├── proposal.md     # /brainstorm で生成
     │   ├── design.md       # /spec で生成
     │   ├── tasks.md        # /spec で生成
+    │   ├── traceability.md # /spec で生成、/implement で更新
     │   ├── specs/          # デルタスペック（/spec で生成）
     │   ├── interpretations/ # 仕様解釈ログ（/implement で生成）コミット対象外、/compound 後に削除
     │   └── reviews/         # レビュー結果（/review で生成）コミット対象外、/compound 後に削除
@@ -47,14 +48,19 @@ openspec/
 
 常時読み込み: `rules/core-essentials.md`（エスカレーション・セキュリティ・Skill 1%ルール・Context Isolation・Git・コード品質）
 
-詳細ルールは `reference/` にオンデマンド配置。作業対象に応じて必要なファイルを読み込む:
+詳細ルールは `.claude/rules/` に配置し、Claude Code の自動ロード機能で読み込む:
 
-| Reference File | タイミング |
-|---|---|
-| `reference/coding-standards.md` | コーディング規約確認 |
-| `reference/core-rules.md` | フェーズ管理・検証ゲート |
-| `reference/workflow-rules.md` | セッション管理 |
-| `reference/common/testing.md` | テスト作成・TDD |
+| Rule File | 内容 | ロード条件 |
+|---|---|---|
+| `.claude/rules/core-rules.md` | フェーズ管理・検証ゲート | 毎セッション自動ロード（`paths` なし） |
+| `.claude/rules/workflow-rules.md` | セッション管理 | 毎セッション自動ロード（`paths` なし） |
+| `.claude/rules/context-isolation.md` | Context Isolation 詳細 | 毎セッション自動ロード（`paths` なし） |
+| `.claude/rules/coding-standards.md` | コーディング規約 | 毎セッション自動ロード（`paths` なし） |
+| `.claude/rules/testing.md` | テスト作成・TDD | 毎セッション自動ロード（`paths` なし） |
+
+> **Note**: ソースコードのあるプロジェクトでは `paths` フロントマターを追加して対象ファイル操作時のみロードするよう調整できる（例: `paths: ["src/**/*.{ts,tsx}"]`）。
+
+`reference/` ディレクトリは長文リファレンスや補足資料の配置先として引き続き利用可能。
 
 ---
 
@@ -84,7 +90,8 @@ openspec/
 > **拡張方法**:
 > - ドメインスキルは `/setup` コマンドで検索・インストール、または `<project>/.claude/skills/` に手動追加
 > - レビューエージェントは `agents/review/` に追加で自動認識
-> - リファレンスは `reference/` に追加
+> - ルールは `.claude/rules/` に追加（`paths` フロントマターで適用条件を制御可能）
+> - 補足資料・長文リファレンスは `reference/` に追加
 
 ---
 
@@ -101,8 +108,51 @@ openspec/
 
 ---
 
-## Compound Learning
+## Experiential Learning
 
-学びを種別に応じて適切なアーティファクトに自動ルーティング。詳細は `/compound` コマンド定義を参照。
+全プロジェクト・全対話の経験ログを `~/.claude/docs/experiential/` に一元蓄積し、結晶化プロセスを通じて rules/skills/hooks に昇格させる。
+
+### ディレクトリ構造
+
+```
+~/.claude/docs/experiential/
+  ├── logs/           # タグ付き経験ログ（/compound 出力 + Nurture ログ + Signal ログ）
+  ├── patterns/       # /crystallize で抽出されたパターン候補
+  ├── metrics/        # レビューメトリクス蓄積
+  └── crystallization-log.md  # 結晶化の実行履歴
+```
+
+### コマンド体系
+
+| コマンド | 役割 | 詳細 |
+|---|---|---|
+| `/compound` | 変更単位の学び抽出 + 結晶化チェック | 学びを `logs/` に蓄積。未結晶化エントリが閾値超過時に `/crystallize` を推奨 |
+| `/crystallize` | プロジェクト横断パターン抽出 + 昇格 | 蓄積された経験からパターンを抽出し、人間レビューを経て rules/skills/hooks に昇格 |
+
+---
+
+## Nurturing Protocol
+
+### 経験ログの自動蓄積
+
+全ての対話で、以下の条件に該当するやり取りを検出し `~/.claude/docs/experiential/logs/YYYY-MM-DD-nurture.md` にタグ付きログとして追記する。
+
+| 優先度 | 条件 | タグ |
+|---|---|---|
+| 最高 | ユーザーが提案を修正・却下し理由を説明（例: 「そうではなく、Xすべき。なぜなら Y だから」） | `[CORRECTION]` |
+| 高 | 対話中に再利用可能な原則が言語化された | `[INSIGHT]` |
+| 中 | 設計・実装の判断とその理由が議論された | `[DECISION]` |
+| 中 | 複数場面で繰り返し観察されるパターンが認識された | `[PATTERN]` |
+| 中 | エラーが発生し根本原因が特定された | `[ERROR]` |
+| 低 | プロジェクト固有の環境・制約情報が共有された | `[CONTEXT]` |
+
+**記録対象外**: 単純なファイル操作指示、フォーマット修正、知識移転を伴わない検索のみの対話、既に記録済みの繰り返し（例: 「ありがとう」等の挨拶）
+
+### 記録方法
+
+1. 記録対象を検出したら当日の nurture ログファイルに追記（ファイル・ディレクトリ不在時は作成）
+2. 各エントリに `project` フィールドでカレントプロジェクト名を記録
+3. ログ記録は静かに実行する（ユーザーへの通知は不要）
+4. ログ記録がセッションの主目的を妨げてはならない（自然な区切りで書く）
 
 ---

@@ -32,7 +32,7 @@ Main Agent のコンテキストを保護するため、リサーチ結果の読
 | codebase-analyzer | プロジェクト構造、既存パターン、影響範囲、既存スペックとの関連 |
 | stack-docs-researcher | 公式ドキュメントのベストプラクティス |
 | web-researcher | 最新記事、既知の落とし穴、参考実装 |
-| compound-learnings-researcher | `docs/compound/` からの過去の学び・教訓 |
+| compound-learnings-researcher | `~/.claude/docs/experiential/logs/` からの過去の学び・教訓 |
 
 ## 出力
 

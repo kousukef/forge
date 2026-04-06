@@ -27,6 +27,20 @@ skills: [test-driven-development, iterative-retrieval, verification-before-compl
 
 1. **スキル確認**: Required Skills + プロンプト指定の全スキルの指示に従う
 2. 受け取ったタスクテキスト + デルタスペックの Given/When/Then を読み込む
+2.5. **pre-flight シグナル参照（graceful degradation）**
+   過去の実装で得られた FIX シグナルを参照し、同じ落とし穴を踏まないようにする。
+   - `~/.claude/docs/experiential/logs/` ディレクトリの存在を確認する。存在しない場合は pre-flight をスキップし、ステップ 3 に進む
+   - 存在する場合、Grep で `signal_class: FIX` を検索する:
+     ```
+     Grep: pattern="signal_class: FIX" path="~/.claude/docs/experiential/logs/" glob="*.md"
+     ```
+   - Grep が失敗した場合（エラー、タイムアウト等）は pre-flight をスキップし、ステップ 3 に進む。エラーは出さない
+   - マッチが 0 件の場合: Spec Interpretation Log に「参照したシグナル: 該当なし」と記載し、ステップ 3 に進む
+   - マッチが 1 件以上の場合: マッチしたファイルから直近 5 件（シグナルファイルの日付が最新のものから順、同日内では `sig-NNNN` の番号が大きい順）を取得する。6 件以上の場合は直近 5 件のみ参照し、残りは「他 N 件の FIX シグナルあり」と件数のみ記載する
+   - 取得した FIX シグナルの `related_skill` と学び要約を Spec Interpretation Log 冒頭の「参照したシグナル」テーブルに記載する（テンプレートは後述）
+   - 破損したフロントマター（パース不能な YAML 等）のエントリは無視し、パース可能なエントリのみを参照する
+   - **重要**: pre-flight は Grep 1 回で完結する。compound-learnings-researcher の起動やネストされたエージェント呼び出しは行わない
+   - **重要**: pre-flight の失敗は実装をブロックしない（NON_BLOCKING）
 3. **Spec Interpretation Log を出力する（TDD 開始前に必須）**
    - 各要件の解釈・前提・エッジケースを明文化
    - `openspec/changes/<name>/interpretations/<task>.md` に書き出す
@@ -68,6 +82,17 @@ TDD 開始前に、以下のフォーマットで Spec Interpretation Log を `o
 
 ```markdown
 # Spec Interpretation: [タスク名]
+
+## 参照したシグナル
+
+> pre-flight（ステップ 2.5）で取得した FIX シグナルを記載する。該当なしの場合は「該当なし」と記載する。
+
+| 日付 | プロジェクト | related_skill | 学び |
+|---|---|---|---|
+| YYYY-MM-DD | project-name | [関連スキル/ルール名] | [学びの1行サマリー] |
+
+※ 上記シグナルを踏まえて以下の仕様解釈に反映済み
+※ 他 N 件の FIX シグナルあり（6件以上の場合のみ記載）
 
 ## 対象要件
 - Requirement: [要件名（REQ-XXX）]
@@ -119,6 +144,39 @@ TDD 開始前に、以下のフォーマットで Spec Interpretation Log を `o
 - 仕様の曖昧性への対処: [曖昧だった箇所とどう解釈したか]
 - 却下した代替案: [他の方法を選ばなかった理由]
 - 想定外の発見: [実装中に見つかった注意点]
+
+### シグナル分類
+
+TDD サイクルで得られた学びを以下の基準で分類する。1タスク = 1シグナルエントリ。
+
+#### signal_class 判断基準
+
+| signal_class | 条件 | 例 |
+|---|---|---|
+| `FIX` | 既存スキル/ルールの不備・誤りで躓いた。修正が必要 | ルールに記載の手順が古く、実行時エラーになった |
+| `DERIVED` | 既存パターンの特化版・応用を発見した | 汎用リトライロジックを DB 接続専用に最適化した |
+| `CAPTURED` | 新しいパターン・知見を発見した（既存に該当なし） | 特定ライブラリの未ドキュメントな挙動を発見した |
+| `NONE` | 特筆すべき学びがない。迷った場合もこれを選択 | 仕様通りに実装が完了し、新たな知見はなかった |
+
+> **優先順位**: 1つのタスクで複数の分類に該当する学びがある場合は `FIX > DERIVED > CAPTURED` の優先順位で最も高い1つを選択し、他の学びは `summary` に含める。
+> **TDD 中断時**: build-error-resolver に引き継いだ等で TDD が完了していない場合は `signal_class: NONE` とする。学びのメモがあれば summary にのみ残す。
+
+#### 記入項目
+
+- `signal_class`: 上記テーブルから1つ選択
+- `related_skill`: 関連するスキル名/ルール名/技術領域名を記入する。明確なスキル名がある場合はそれを記載（例: `test-driven-development`, `prisma-expert`）。該当するスキル/ルールが明確でない場合は最も近い技術領域名を自由記述（例: "Prisma query optimization", "React Server Components"）
+- `summary`: 学びの1行要約
+
+#### experiential logs 即時書き込み
+
+`signal_class` が **NONE 以外** の場合、Phase B 記述完了後に `~/.claude/docs/experiential/logs/` へシグナルエントリを即時書き込む。`/compound` の実行を待たない。
+
+- 書き込みフォーマット: `commands/compound.md` の「シグナルエントリ形式」セクションに従う
+- ファイル命名: `YYYY-MM-DD-<project>-signals.md`
+- ディレクトリが存在しない場合は再帰的に作成する
+- **書き込みに失敗した場合**: 警告を出力してスキップする。実装タスクの完了はブロックしない（graceful degradation）
+
+`signal_class: NONE` の場合は experiential logs への書き込みを行わない。
 ```
 
 **必須チェック項目の処理ルール:**
@@ -168,6 +226,8 @@ TDD 開始前に、以下のフォーマットで Spec Interpretation Log を `o
 - [ ] 静的解析がパスしている（プロジェクトの静的解析ツールで確認）
 - [ ] Spec Interpretation Log の Phase A（仕様解釈）が記述済みである
 - [ ] Spec Interpretation Log の Phase B（変更ファイル一覧 + 実装の振り返り）が追記済みである
+- [ ] Phase B のシグナル分類セクションが記述済みである（signal_class, related_skill, summary が記入されていること）
+- [ ] `signal_class` が NONE 以外の場合、シグナルエントリが experiential logs に書き込まれていること（書き込み失敗時はブロックしない -- graceful degradation）
 - [ ] traceability.md の Backward Traceability テーブルに実装ファイルパスを追記済みである（traceability.md が存在する場合のみ。best-effort -- 更新失敗時もブロックしない）
 - [ ] 変更はワーキングツリーに残っている（コミットしていない）
 

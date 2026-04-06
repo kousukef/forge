@@ -30,8 +30,8 @@ Forge ワークフローのルール。セッション管理、タスク管理�
    - 自律的にコミットしない
    - 1コミット = 1つの論理的変更
 
-3. Compound Learning
-   - 防げたはずの失敗 → docs/compound/ に記録
+3. Experiential Learning
+   - 防げたはずの失敗 → ~/.claude/docs/experiential/logs/ に記録
 ```
 
 ### Session End
@@ -118,7 +118,7 @@ git commit -m "type(scope): description"
 
 ## Escalation Workflow
 
-エスカレーションポリシーは `rules/core-essentials.md` を参照。Teams 内エスカレーションフローは `reference/context-isolation.md` を参照。
+エスカレーションポリシーは `rules/core-essentials.md` を参照。Teams 内エスカレーションフローは `.claude/rules/context-isolation.md` を参照。
 
 基本フロー:
 1. 不明点や判断が必要な場面を特定
@@ -129,7 +129,7 @@ git commit -m "type(scope): description"
 
 ## Collaboration Workflow
 
-Context Isolation（2層アーキテクチャ）の詳細は `reference/context-isolation.md` を参照。
+Context Isolation（2層アーキテクチャ）の詳細は `.claude/rules/context-isolation.md` を参照。
 
 ### Handoff Pattern
 
@@ -142,9 +142,9 @@ Context Isolation（2層アーキテクチャ）の詳細は `reference/context-
 
 ---
 
-## Compound Learning
+## Experiential Learning
 
-詳細は `/compound` コマンド定義を参照。記録先: `docs/compound/YYYY-MM-DD-<topic>.md`
+詳細は `/compound` コマンド定義を参照。記録先: `~/.claude/docs/experiential/logs/YYYY-MM-DD-<project>-<topic>.md`
 
 ---
 
@@ -157,7 +157,7 @@ Context Isolation（2層アーキテクチャ）の詳細は `reference/context-
 - コミットはユーザーの明示的な指示で行う
 - 不明点はエスカレーションする
 - コミット前に検証（テスト + 型チェック）を通過させる
-- Compound Learning で学びを記録
+- Experiential Learning で学びを記録
 
 ### Don't
 
@@ -169,4 +169,4 @@ Context Isolation（2層アーキテクチャ）の詳細は `reference/context-
 
 ---
 
-_Forge Workflow Rules: パイプライン規律 x TDD x Compound Learning_
+_Forge Workflow Rules: パイプライン規律 x TDD x Experiential Learning_

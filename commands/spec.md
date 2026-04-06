@@ -31,7 +31,7 @@ mode に基づいて Phase 1a または Phase 1b に進む。
 
 ### Phase Gate: エントリー基準確認
 
-brainstorm → spec のエントリー基準を確認する（`reference/core-rules.md` Phase Gates 参照）。spec-validator の Step 0 でも自動検証されるが、ここで事前に目視確認する。
+brainstorm → spec のエントリー基準を確認する（`.claude/rules/core-rules.md` Phase Gates 参照）。spec-validator の Step 0 でも自動検証されるが、ここで事前に目視確認する。
 
 ### Phase 1a: リサーチ＆スペックチーム（Teams モード）
 
@@ -45,7 +45,7 @@ Main Agent（チームリーダー）
       +-- codebase-analyzer: プロジェクト構造・既存パターン・影響範囲分析
       +-- stack-docs-researcher: Context7 MCP経由で公式ドキュメント調査
       +-- web-researcher: Web Searchで最新ベストプラクティス・落とし穴調査
-      +-- compound-learnings-researcher: docs/compound/ から過去の学び抽出
+      +-- compound-learnings-researcher: ~/.claude/docs/experiential/logs/ から過去の学び抽出
       +-- spec-writer: リサーチ結果統合 -> design.md / tasks.md / delta-spec 生成
 ```
 
@@ -81,7 +81,7 @@ Main Agent（チームリーダー）
    - 影響を受けるファイルを特定
    - 依存関係を把握
    - `openspec/specs/` の既存スペックを読み込み、関連する要件とシナリオを抽出
-4. **compound-learnings-researcher** -- `docs/compound/` 配下の過去の学びを検索し、関連する教訓を抽出
+4. **compound-learnings-researcher** -- `~/.claude/docs/experiential/logs/` 配下の過去の学びを検索し、関連する教訓を抽出
 
 ### Phase 1.7: ドメイン判定
 
@@ -176,7 +176,7 @@ Phase 3 の検証結果に基づき、仕様の修正を行う。
 3. 修正ループで解消された項目の概要
 4. 残存する注意事項（もしあれば）
 
-5. Phase Gate: spec → implement のエグジット基準を満たしていることを確認する（`reference/core-rules.md` Phase Gates 参照）
+5. Phase Gate: spec → implement のエグジット基準を満たしていることを確認する（`.claude/rules/core-rules.md` Phase Gates 参照）
 
 「この仕様で実装を開始してよいですか?」と確認する。
 

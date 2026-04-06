@@ -83,7 +83,7 @@ argument-hint: "<change-name>"
 - カバレッジ: XX%
 
 ## 学び
-- 複利ドキュメント: `docs/compound/YYYY-MM-DD-<topic>.md`
+- 経験ログ: `~/.claude/docs/experiential/logs/YYYY-MM-DD-<project>-<topic>.md`
 
 ## スペックマージ
 - マージ先: `openspec/specs/`
