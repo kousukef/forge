@@ -35,6 +35,7 @@ openspec/
     │   ├── proposal.md     # /brainstorm で生成
     │   ├── design.md       # /spec で生成
     │   ├── tasks.md        # /spec で生成
+    │   ├── traceability.md # /spec で生成、/implement で更新
     │   ├── specs/          # デルタスペック（/spec で生成）
     │   ├── interpretations/ # 仕様解釈ログ（/implement で生成）コミット対象外、/compound 後に削除
     │   └── reviews/         # レビュー結果（/review で生成）コミット対象外、/compound 後に削除
@@ -111,10 +112,22 @@ openspec/
 
 全プロジェクト・全対話の経験ログを `~/.claude/docs/experiential/` に一元蓄積し、結晶化プロセスを通じて rules/skills/hooks に昇格させる。
 
-| コマンド | 役割 |
-|---|---|
-| `/compound` | 変更単位の学び抽出 + 結晶化チェック（閾値通知） |
-| `/crystallize` | プロジェクト横断パターン抽出 + rules/skills/hooks への昇格 |
+### ディレクトリ構造
+
+```
+~/.claude/docs/experiential/
+  ├── logs/           # タグ付き経験ログ（/compound 出力 + Nurture ログ + Signal ログ）
+  ├── patterns/       # /crystallize で抽出されたパターン候補
+  ├── metrics/        # レビューメトリクス蓄積
+  └── crystallization-log.md  # 結晶化の実行履歴
+```
+
+### コマンド体系
+
+| コマンド | 役割 | 詳細 |
+|---|---|---|
+| `/compound` | 変更単位の学び抽出 + 結晶化チェック | 学びを `logs/` に蓄積。未結晶化エントリが閾値超過時に `/crystallize` を推奨 |
+| `/crystallize` | プロジェクト横断パターン抽出 + 昇格 | 蓄積された経験からパターンを抽出し、人間レビューを経て rules/skills/hooks に昇格 |
 
 ---
 

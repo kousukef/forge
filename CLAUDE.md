@@ -115,7 +115,7 @@ openspec/
 
 ```
 ~/.claude/docs/experiential/
-  ├── logs/           # タグ付き経験ログ（/compound 出力 + Nurture ログ）
+  ├── logs/           # タグ付き経験ログ（/compound 出力 + Nurture ログ + Signal ログ）
   ├── patterns/       # /crystallize で抽出されたパターン候補
   ├── metrics/        # レビューメトリクス蓄積
   └── crystallization-log.md  # 結晶化の実行履歴
