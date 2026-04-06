@@ -207,6 +207,62 @@ crystallized: false
 | `change` | 変更名（`<change-name>`） |
 | `crystallized` | `false`（初期値）。`/crystallize` で処理後に `true` に更新される |
 
+### シグナルエントリ形式
+
+implementer が TDD サイクル完了後に `signal_class: NONE` 以外のシグナルを即時書き込む際のフォーマット。compound エントリより軽量で、implementer サブエージェントが素早く記述できることを優先する。
+
+#### ファイル命名規則
+
+- **パス**: `~/.claude/docs/experiential/logs/YYYY-MM-DD-<project>-signals.md`
+- 1 日 1 ファイル/プロジェクト。nurture ログと同じ日次集約パターン
+- ファイルが存在しない場合は新規作成する。ディレクトリが存在しない場合は再帰的に作成する
+
+#### ID 体系
+
+- **形式**: `sig-NNNN`（ゼロ埋め 4 桁連番、例: `sig-0001`, `sig-0002`）
+- ファイル内で一意。compound の `exp-NNNN` と名前空間を分離し、型で識別可能にする
+
+#### 追記方式
+
+- 同一ファイルに `---` 区切りで複数エントリを追記する（append-only）
+- 既存エントリの上書き・削除は行わない
+
+#### フォーマット
+
+```markdown
+---
+id: sig-NNNN
+type: signal
+signal_class: FIX | DERIVED | CAPTURED
+related_skill: "[関連スキル/ルール/領域名]"
+project: <project-name>
+task: "<task-name>"
+date: YYYY-MM-DD
+crystallized: false
+---
+
+# [学びの1行サマリー]
+
+## コンテキスト
+[実装中に何が起きたか -- 2-3文]
+
+## 学び
+[再利用可能な知見 -- 1-2文]
+```
+
+#### フロントマターフィールド説明
+
+| フィールド | 説明 |
+|---|---|
+| `id` | `sig-NNNN` 形式。ファイル内連番。クロスファイル一意性は `id` + `project` + ファイル名日付の組み合わせで担保する |
+| `type` | `signal`（implementer 即時書き込み由来） |
+| `signal_class` | `FIX`（既存スキル/ルールの不備修正）、`DERIVED`（既存の特化版）、`CAPTURED`（新発見パターン） |
+| `related_skill` | 関連するスキル/ルール/領域名。明確なスキル名がない場合は技術領域名を自由記述（例: "Prisma query optimization"） |
+| `project` | プロジェクト名。特定できない場合は `unknown` |
+| `task` | タスク名（`tasks.md` のタスク名に対応） |
+| `date` | エントリ作成日（`YYYY-MM-DD`） |
+| `crystallized` | `false`（初期値）。`/crystallize` で処理後に `true` に更新される |
+
 ## 累積スペック形式
 
 マージ後の `openspec/specs/<feature>/spec.md` は以下の形式になる：
