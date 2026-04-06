@@ -211,4 +211,5 @@ COMPLETION CRITERIA:
 - テストがパスすること
 - 型チェックがパスすること
 - Spec Interpretation Log の Phase B が追記済みであること
+- Phase B のシグナル分類が記述済みであること
 ```
