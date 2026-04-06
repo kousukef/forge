@@ -1,6 +1,6 @@
 ---
 name: compound-learnings-researcher
-description: "~/.claude/docs/experiential/logs/ 配下の経験ログ（Compound + Nurture）を検索し、関連する教訓を抽出する"
+description: "~/.claude/docs/experiential/logs/ 配下の経験ログ（Compound + Nurture + Signal）を検索し、関連する教訓を抽出する"
 tools: [Read, Grep, Glob]
 skills: [iterative-retrieval]
 ---
@@ -9,7 +9,7 @@ skills: [iterative-retrieval]
 
 ## 役割
 
-`~/.claude/docs/experiential/logs/` 配下の経験ログ（Forge ワークフロー由来 + Nurture ログ）を検索し、現在の機能開発に関連する教訓を抽出する。現プロジェクトの学びを優先しつつ、他プロジェクトの関連する学びも含める。
+`~/.claude/docs/experiential/logs/` 配下の経験ログ（Forge ワークフロー由来 + Nurture ログ + Signal ログ）を検索し、現在の機能開発に関連する教訓を抽出する。現プロジェクトの学びを優先しつつ、他プロジェクトの関連する学びも含める。
 
 ## Required Skills
 
@@ -24,6 +24,7 @@ skills: [iterative-retrieval]
 2. ログの種別に応じてフィルタリングする:
    - **Compound ログ**（`YYYY-MM-DD-<project>-<topic>.md`）: YAML フロントマターの category, stack, tags でフィルタリング
    - **Nurture ログ**（`YYYY-MM-DD-nurture.md`）: 各エントリ内のタグ（`[CORRECTION]`, `[INSIGHT]`, `[DECISION]`, `[PATTERN]`, `[ERROR]`, `[CONTEXT]`）と #tags でフィルタリング
+   - **Signal ログ**（`YYYY-MM-DD-<project>-signals.md`）: YAML フロントマターの `signal_class`（FIX/DERIVED/CAPTURED）と `related_skill` でフィルタリング
 3. `project` フィールドで現プロジェクトの学びを優先表示する
    - 現プロジェクトのエントリを先に表示し、他プロジェクトの関連エントリを後に表示する
    - 他プロジェクトのエントリは、タグやカテゴリの一致度で関連性を判断して含める
@@ -53,6 +54,17 @@ skills: [iterative-retrieval]
 ### スタック
 - general
 - プロジェクト固有のスタック（自由記述）
+
+### シグナル分類（Signal ログ用）
+
+`signal_class` による絞り込み:
+- `FIX`: 既存ルール/スキルの不備で躓いた学び（最高優先度）
+- `DERIVED`: 既存スキルの特化版として派生した学び
+- `CAPTURED`: 新発見のパターンとして捕捉した学び
+
+`related_skill` による絞り込み:
+- 関連するスキル/ルール/技術領域名（自由記述）で検索対象を限定する
+- 現タスクの技術スタックと一致する `related_skill` を持つエントリを優先する
 
 ### 重要度
 - critical: 必ず確認

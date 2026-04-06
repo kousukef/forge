@@ -30,6 +30,7 @@ $ARGUMENTS から以下のオプションを解析する:
 2. 各ファイルから `crystallized: false` のエントリを抽出する
    - **Compound ログ**（`type: compound`）: YAML フロントマターで判定
    - **Nurture ログ**（`type: nurture`）: 各 `---` 区切りブロック内の `crystallized: false` で判定
+   - **Signal ログ**（`type: signal`）: implementer が実装完了時に即時書き込んだシグナルエントリ。`signal_class`（FIX/DERIVED/CAPTURED）と `related_skill` を持つ
 3. `--scope` に応じてフィルタリングする
    - `all`: フィルタリングなし
    - `recent`: ファイル名の日付部分で直近 30 日以内のエントリに絞る（30 日前の日付を含む）
@@ -40,10 +41,15 @@ $ARGUMENTS から以下のオプションを解析する:
 5. 収集結果のサマリーを表示する:
    ```
    N 件の未結晶化エントリを収集しました
-   （compound: X 件, nurture: Y 件）
+   （compound: X 件, nurture: Y 件, signal: Z 件）
    プロジェクト別: project-A M件, project-B K件, ...
    タグ別: [CORRECTION] A件, [INSIGHT] B件, ...
+   related_skill 別: Prisma 3件, React 2件, ...
    ```
+   - signal が 0 件の場合も `signal: 0 件` を表示する（省略しない）
+   - `related_skill` 別集計は signal エントリが 1 件以上存在する場合のみ表示する
+   - `related_skill` の集計は大文字小文字を無視する（case-insensitive）。完全一致でない表記ゆれ（例: "Prisma" vs "Prisma ORM"）は別カウントとする
+   - `related_skill` のユニーク種類数が 10 を超える場合は FIX 件数の多い上位 10 件を表示し、残りは「他 N 種類」と省略する
 
 ### Phase 2: パターン抽出
 
@@ -53,9 +59,11 @@ $ARGUMENTS から以下のオプションを解析する:
    - **プロジェクト横断**: 異なるプロジェクトで同じパターンが出現しているか（特に高価値）
    - **因果関係**: ある問題が別の問題の原因になっているパターンはないか
    - **Shift-Left 機会**: レビューやテストで発見された問題で、仕様段階で防げたものはないか
+   - **FIX 集積度**: 同一 `related_skill` への FIX シグナルが 3 件以上蓄積している場合、当該スキルのパターン候補を優先する（閾値は Learning Router の「3回ルール」と整合）。`type: signal` のエントリが 0 件の場合はスキップする
 3. 既存の rules/skills/hooks の内容を読み込み、抽出パターンとの重複・矛盾を検出する
 4. パターン候補を `~/.claude/docs/experiential/patterns/PAT-NNN-<name>.md` に書き出す
    - ディレクトリが存在しない場合は再帰的に作成する
+5. パターン候補リストを Phase 3（人間レビュー）に提示する際、FIX 集積度の高い順にソートする。FIX 集積度が同率の場合は他の抽出観点（プロジェクト横断性、繰り返し回数等）による総合判断でソートする
 
 #### パターン候補フォーマット
 
